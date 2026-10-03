@@ -41,3 +41,16 @@ def test_choose_first_dealer_then_deal() -> None:
     assert after.pending_dealer is None
     assert after.hand is not None
     assert emitted
+
+
+def test_redeal_requires_all_discards() -> None:
+    from tests.factories import started_game
+
+    state = started_game().get_state().evolve(phase=Phase.REDEAL)
+    with pytest.raises(InvariantViolationError, match="pendientes"):
+        flow.redeal(state)
+
+
+def test_current_hand_requires_a_hand() -> None:
+    with pytest.raises(InvariantViolationError, match="No hay jugada"):
+        _ = _new_state().current_hand

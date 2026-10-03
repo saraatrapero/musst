@@ -20,6 +20,9 @@ class Phase(Enum):
     CHOOSE_FIRST_DEALER = "choose_first_dealer"  # automática (C.III-1)
     DEAL = "deal"  # automática (C.III-2)
     MUS_DECISION = "mus_decision"  # decisión (C.IV)
+    DISCARD = "discard"  # decisión (C.III-11)
+    REDEAL = "redeal"  # automática (C.III-2, C.III-15)
+    LANCE = "lance"  # decisión: envites del lance en curso (HandState.lance)
     GAME_OVER = "game_over"
 
     @property
@@ -32,4 +35,4 @@ class Phase(Enum):
         return not self.is_automatic
 
 
-_AUTOMATIC = frozenset({Phase.CHOOSE_FIRST_DEALER, Phase.DEAL})
+_AUTOMATIC = frozenset({Phase.CHOOSE_FIRST_DEALER, Phase.DEAL, Phase.REDEAL})

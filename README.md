@@ -16,7 +16,8 @@ MUS.ST: no incluye interfaz, usuarios ni IA.
 | 1 | cartas, baraja, equivalencias de ocho reyes, RNG determinista, configuración, errores | ✅ |
 | 2 | jugadores, parejas y orden de la mesa (mano, postre, turnos, sorteo del primer reparto) | ✅ |
 | 3 | estado, máquina de estados, acciones tipadas, validación, eventos con visibilidad, invariantes, sorteo y reparto | ✅ |
-| 4+ | mus y descartes, lances, envites, órdago, tanteo, observaciones, replay | pendiente |
+| 4 | mus y descartes: orden de habla, corte, descartes, reposición, rebarajado del descarte | ✅ |
+| 5+ | lances (grande, chica, pares, juego/punto), envites, órdago, tanteo, observaciones, replay | pendiente |
 
 ## Instalación
 

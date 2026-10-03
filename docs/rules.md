@@ -89,6 +89,14 @@ proceden del reglamento y así se indica en el código y en los tests.
 
 Tests: `tests/rules/test_fem_seating.py` (R-03, R-04, R-06, R-08, R-10, D-15).
 
+### Mus y descartes (fase 4)
+
+Implementado en `rules/mus.py` y `game/handlers/mus.py`. Tests con cita en
+`tests/rules/test_fem_mus.py`: C.IV-4 (orden), C.IV-2 (cortar con cualquier naipe),
+Voc. "Paso", C.III-11 (orden de descarte), C.III-2 (servir de una vez y en el mismo
+orden), C.III-15 / D-07 (rebarajar todo el descarte), D-13 (límites), D-14 (sin límite
+de rondas). Reparto: `tests/rules/test_fem_dealing.py` (C.III-1, C.III-2).
+
 ---
 
 ## 3. Fuera de alcance del motor (y por qué)

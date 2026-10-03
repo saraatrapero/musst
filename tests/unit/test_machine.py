@@ -48,7 +48,7 @@ def fake_handler(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_without_handler_every_action_is_invalid_state() -> None:
-    state = started_game().get_state()
+    state = started_game().get_state().evolve(phase=Phase.LANCE)
     assert machine.actors(state) == ()
     assert not machine.legal_actions(state, SeatId(0))
     with pytest.raises(InvalidStateError):

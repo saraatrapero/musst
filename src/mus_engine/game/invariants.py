@@ -10,12 +10,13 @@ from mus_engine.cards.deck import validate_complete
 from mus_engine.errors import InvalidDeckError, InvariantViolationError
 from mus_engine.game.phases import Phase
 from mus_engine.game.state import GameState
-from mus_engine.players.seating import TeamId, mano_for_dealer
+from mus_engine.players.seating import NUM_SEATS, TeamId, mano_for_dealer
 
 
 def check_state(state: GameState) -> None:
     _check_cards(state)
     _check_positions(state)
+    _check_mus(state)
     _check_score(state)
 
 
@@ -55,6 +56,24 @@ def _check_positions(state: GameState) -> None:
     hand = state.hand
     if hand is not None and hand.mano != mano_for_dealer(hand.dealer):
         raise InvariantViolationError("La mano no es el jugador a la derecha del que reparte")
+
+
+def _check_mus(state: GameState) -> None:
+    hand = state.hand
+    if hand is None:
+        return
+    mus = hand.mus
+    if not 0 <= mus.speaker_index < NUM_SEATS:
+        raise InvariantViolationError(f"Turno de mus fuera de rango: {mus.speaker_index}")
+    if state.phase in (Phase.MUS_DECISION, Phase.DISCARD) and mus.is_cut:
+        raise InvariantViolationError("No puede haber mus ni descartes tras cortarse el mus")
+    if state.phase is Phase.LANCE and not mus.is_cut:
+        raise InvariantViolationError("No se juegan lances sin cortar el mus")
+    if state.phase is not Phase.DISCARD and any(d is not None for d in mus.discards):
+        raise InvariantViolationError("Descartes pendientes fuera de la fase de descarte")
+    for player, cards in enumerate(mus.discards):
+        if cards is not None and not cards <= set(hand.hands[player]):
+            raise InvariantViolationError(f"El descarte del jugador {player} no es de su mano")
 
 
 def _check_score(state: GameState) -> None:

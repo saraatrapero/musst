@@ -112,14 +112,14 @@ def test_event_sequence_numbers_are_contiguous() -> None:
     assert [e.seq for e in game.event_log] == list(range(len(game.event_log)))
 
 
-def test_mus_phase_actions_not_available_yet() -> None:
-    # Frontera de la fase 3: el mus se implementa en la fase siguiente.
+def test_lance_actions_not_available_yet() -> None:
+    # Frontera de la fase 4: los lances se implementan en las fases siguientes.
     game = started_game()
+    game.apply_action(game.mano, CutMusAction())
+    assert game.phase is Phase.LANCE
     assert game.current_actors() == ()
     with pytest.raises(InvalidStateError):
         game.apply_action(game.mano, MusAction())
-    with pytest.raises(InvalidStateError):
-        game.apply_action(game.mano, CutMusAction())
 
 
 @pytest.mark.parametrize("player", [-1, 4, "0", None, True, 1.0])

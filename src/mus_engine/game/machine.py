@@ -17,6 +17,7 @@ from mus_engine.errors import (
 )
 from mus_engine.game.actions import Action
 from mus_engine.game.flow import Step, run_automatic
+from mus_engine.game.handlers.mus import DiscardHandler, MusDecisionHandler
 from mus_engine.game.legal import NO_ACTIONS, LegalActions
 from mus_engine.game.phases import Phase
 from mus_engine.game.state import GameState
@@ -43,7 +44,10 @@ class PhaseHandler(Protocol):
         ...
 
 
-HANDLERS: dict[Phase, PhaseHandler] = {}
+HANDLERS: dict[Phase, PhaseHandler] = {
+    Phase.MUS_DECISION: MusDecisionHandler(),
+    Phase.DISCARD: DiscardHandler(),
+}
 
 
 def actors(state: GameState) -> tuple[SeatId, ...]:

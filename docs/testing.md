@@ -30,7 +30,16 @@ python -m pytest --cov=mus_engine --cov-report=term-missing
 
 - `mypy --strict` también sobre los tests.
 - Cobertura objetivo: 100 % en `cards/`, `rules/`, `betting/`, `scoring/`.
-- Tests acumulados: fase 1: 114; fase 2: 183; fase 3: 290. Cobertura 100 %.
+- Tests acumulados: fase 1: 114; fase 2: 183; fase 3: 290; fase 4: 347. Cobertura 100 %.
+
+## Utilidades
+
+- `tests/play.py`: jugar por la API pública (`all_mus`, `discard_all`, `cut`, `actor`).
+- `tests/strategies.py`: `play_random_legal(game, data, max_steps)` elige acciones
+  legales al azar con Hypothesis y devuelve las aplicadas (permite reproducirlas).
+- `tests/visibility.py`: `cards_in(obj)` extrae recursivamente todos los naipes de un
+  objeto; `cards_ever_held(game, seat)` los que un jugador ha tenido. Base de los tests
+  de información privada.
 
 ## Construir estados concretos
 

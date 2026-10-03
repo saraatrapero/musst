@@ -1,5 +1,7 @@
 """Los invariantes detectan estados corruptos."""
 
+from typing import Any
+
 import pytest
 from tests.factories import started_game
 
@@ -122,3 +124,43 @@ def test_state_before_first_hand_passes() -> None:
     from mus_engine import Game
 
     invariants.check_state(Game(seed=1).get_state())
+
+
+def _with_mus(state: GameState, **changes: Any) -> GameState:
+    import dataclasses
+
+    hand = state.current_hand
+    return state.evolve(
+        hand=dataclasses.replace(hand, mus=dataclasses.replace(hand.mus, **changes))
+    )
+
+
+def test_mus_speaker_out_of_range() -> None:
+    with pytest.raises(InvariantViolationError, match="fuera de rango"):
+        invariants.check_state(_with_mus(_state(), speaker_index=4))
+
+
+def test_no_mus_after_cut() -> None:
+    with pytest.raises(InvariantViolationError, match="cortarse"):
+        invariants.check_state(_with_mus(_state(), cut_by=SeatId(0)))
+
+
+def test_no_lance_without_cut() -> None:
+    with pytest.raises(InvariantViolationError, match="sin cortar"):
+        invariants.check_state(_state().evolve(phase=Phase.LANCE))
+
+
+def test_pending_discards_only_in_discard_phase() -> None:
+    state = _state()
+    card = state.current_hand.hand_of(SeatId(0))[0]
+    discards = (frozenset({card}), None, None, None)
+    with pytest.raises(InvariantViolationError, match="pendientes"):
+        invariants.check_state(_with_mus(state, discards=discards))
+
+
+def test_discard_must_belong_to_hand() -> None:
+    state = _state().evolve(phase=Phase.DISCARD)
+    foreign = state.current_hand.hand_of(SeatId(1))[0]
+    discards = (frozenset({foreign}), None, None, None)
+    with pytest.raises(InvariantViolationError, match="no es de su mano"):
+        invariants.check_state(_with_mus(state, discards=discards))

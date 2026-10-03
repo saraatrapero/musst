@@ -2,7 +2,10 @@
 
 from mus_engine.events.events import (
     CardsDealt,
+    CardsDiscarded,
     DeckShuffled,
+    DiscardDeclared,
+    DiscardPileReshuffled,
     Emission,
     Event,
     EventEnvelope,
@@ -10,6 +13,8 @@ from mus_engine.events.events import (
     FirstDealerFixed,
     GameStarted,
     HandStarted,
+    MusCut,
+    MusRequested,
     PhaseChanged,
     RngSeeded,
     Visibility,
@@ -17,7 +22,10 @@ from mus_engine.events.events import (
 
 __all__ = [
     "CardsDealt",
+    "CardsDiscarded",
     "DeckShuffled",
+    "DiscardDeclared",
+    "DiscardPileReshuffled",
     "Emission",
     "Event",
     "EventEnvelope",
@@ -25,6 +33,8 @@ __all__ = [
     "FirstDealerFixed",
     "GameStarted",
     "HandStarted",
+    "MusCut",
+    "MusRequested",
     "PhaseChanged",
     "RngSeeded",
     "Visibility",

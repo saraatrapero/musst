@@ -173,9 +173,35 @@ orden de la baraja). `envelope.visible_to(seat)`.
 
 Eventos actuales: `GameStarted`, `RngSeeded` (motor), `FirstDealerDrawn`,
 `FirstDealerFixed`, `HandStarted`, `DeckShuffled` (motor), `CardsDealt` (privado),
+`MusRequested`, `MusCut`, `DiscardDeclared` (sólo el número de naipes),
+`CardsDiscarded` (privado: tirados y recibidos), `DiscardPileReshuffled`,
 `PhaseChanged`.
 
 ### `GameState` / `HandState` / `GameScore`
 
 Valores inmutables. `HandState`: `number`, `dealer`, `mano`, `hands` (por asiento),
 `stock` (mazo), `discard_pile`. `GameScore`: `tantos` y `games` por pareja.
+
+## Fase 4 — Mus y descartes
+
+```python
+from mus_engine import CutMusAction, DiscardAction, Game, MusAction, Phase
+
+game = Game(seed=7)
+game.start()
+(player,) = game.current_actors()              # la mano
+game.apply_action(player, MusAction())         # o CutMusAction(): pasa a LANCE (grande)
+# ... cuando los cuatro dan mus, game.phase == Phase.DISCARD
+(player,) = game.current_actors()              # empieza el que reparte
+legal = game.get_legal_actions(player)         # las 15 combinaciones de sus naipes
+game.apply_action(player, legal.actions[0])    # DiscardAction(frozenset({...}))
+```
+
+`HandState.mus` (`MusState`): `round`, `speaker_index`, `requested` (quién dio mus en
+la ronda), `cut_by`, `discards` (pendientes de servir). `HandState.lance` indica el
+lance en curso (`LanceType.GRANDE` tras el corte).
+
+Errores: fuera de turno → `NotYourTurnError`; acción de otra fase (p. ej. mus en
+descartes, descarte tras el corte) → `InvalidStateError`; naipes ajenos, del mazo, 0 o
+más de 4 → `InvalidDiscardError`; naipes repetidos → `InvalidDiscardError` al
+construir la acción.

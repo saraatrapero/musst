@@ -86,6 +86,40 @@ class CardsDealt(Event):
 
 
 @dataclass(frozen=True, slots=True)
+class MusRequested(Event):
+    seat: SeatId
+
+
+@dataclass(frozen=True, slots=True)
+class MusCut(Event):
+    seat: SeatId
+
+
+@dataclass(frozen=True, slots=True)
+class DiscardDeclared(Event):
+    """Público: cuántos naipes pide ``seat`` (no cuáles)."""
+
+    seat: SeatId
+    count: int
+
+
+@dataclass(frozen=True, slots=True)
+class CardsDiscarded(Event):
+    """PRIVATE: naipes que ``seat`` ha tirado y los que ha recibido a cambio."""
+
+    seat: SeatId
+    discarded: tuple[Card, ...]
+    received: tuple[Card, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class DiscardPileReshuffled(Event):
+    """Público: se acabó el mazo y se ha barajado el descarte (C.III-15)."""
+
+    cards: int
+
+
+@dataclass(frozen=True, slots=True)
 class PhaseChanged(Event):
     """La máquina de estados ha entrado en ``phase`` (nombre de :class:`Phase`)."""
 

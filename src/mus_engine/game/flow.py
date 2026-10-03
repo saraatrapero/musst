@@ -7,12 +7,15 @@ los eventos emitidos. Son funciones puras.
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import replace
 
 from mus_engine.cards.deck import Deck
 from mus_engine.errors import InvariantViolationError
 from mus_engine.events.events import (
     CardsDealt,
+    CardsDiscarded,
     DeckShuffled,
+    DiscardPileReshuffled,
     Emission,
     FirstDealerDrawn,
     FirstDealerFixed,
@@ -20,9 +23,10 @@ from mus_engine.events.events import (
     PhaseChanged,
 )
 from mus_engine.game.phases import Phase
-from mus_engine.game.state import GameState, HandState
-from mus_engine.players.seating import ALL_SEATS, SeatId, mano_for_dealer
+from mus_engine.game.state import GameState, HandState, MusState
+from mus_engine.players.seating import ALL_SEATS, SeatId, discard_order, mano_for_dealer
 from mus_engine.rules.dealing import deal_hands, draw_first_dealer
+from mus_engine.rules.mus import serve_discards, sorted_by_hand
 
 Step = tuple[GameState, tuple[Emission, ...]]
 
@@ -75,9 +79,45 @@ def deal(state: GameState) -> Step:
     return new_state, emitted + entered
 
 
+def redeal(state: GameState) -> Step:
+    """Sirve los descartes de una ronda de mus y vuelve a decidir el mus (C.III-2, C.III-15)."""
+    hand = state.current_hand
+    mus = hand.mus
+    order = discard_order(hand.mano)
+    if any(cards is None for cards in mus.discards):
+        raise InvariantViolationError("REDEAL con descartes pendientes")
+    discards = tuple(cards or frozenset() for cards in mus.discards)
+    served = serve_discards(hand.hands, hand.stock, hand.discard_pile, discards, order, state.rng)
+    emitted: list[Emission] = []
+    for deck in served.reshuffles:
+        emitted.append(Emission.public(DiscardPileReshuffled(len(deck))))
+        emitted.append(Emission.engine(DeckShuffled(deck.cards)))
+    for player in order:
+        emitted.append(
+            Emission.private(
+                player,
+                CardsDiscarded(
+                    player,
+                    sorted_by_hand(hand.hands[player], discards[player]),
+                    served.received[player],
+                ),
+            )
+        )
+    new_hand = replace(
+        hand,
+        hands=served.hands,
+        stock=served.stock,
+        discard_pile=served.discard_pile,
+        mus=MusState(round=mus.round + 1),
+    )
+    new_state, entered = enter(state.evolve(hand=new_hand, rng=served.rng), Phase.MUS_DECISION)
+    return new_state, (*emitted, *entered)
+
+
 AUTOMATIC_STEPS: dict[Phase, Callable[[GameState], Step]] = {
     Phase.CHOOSE_FIRST_DEALER: choose_first_dealer,
     Phase.DEAL: deal,
+    Phase.REDEAL: redeal,
 }
 
 

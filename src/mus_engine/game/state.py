@@ -12,11 +12,33 @@ from dataclasses import dataclass, field, replace
 from mus_engine.cards.card import Card
 from mus_engine.cards.deck import Deck
 from mus_engine.config import GameConfig
+from mus_engine.errors import InvariantViolationError
 from mus_engine.game.phases import Phase
 from mus_engine.players.player import Table
 from mus_engine.players.seating import SeatId, TeamId, seat
 from mus_engine.rng import Rng
+from mus_engine.rules.lance import LanceType
 from mus_engine.scoring.score import GameScore
+
+
+@dataclass(frozen=True, slots=True)
+class MusState:
+    """Estado del mus de la jugada en curso.
+
+    ``round`` cuenta las rondas de mus (1 = primera decisión tras el reparto).
+    ``speaker_index`` es la posición, en el orden de mus, del siguiente que habla.
+    ``discards`` guarda los descartes declarados en la ronda (privados hasta servirse).
+    """
+
+    round: int = 1
+    speaker_index: int = 0
+    requested: tuple[SeatId, ...] = ()
+    cut_by: SeatId | None = None
+    discards: tuple[frozenset[Card] | None, ...] = (None, None, None, None)
+
+    @property
+    def is_cut(self) -> bool:
+        return self.cut_by is not None
 
 
 @dataclass(frozen=True, slots=True)
@@ -29,6 +51,8 @@ class HandState:
     hands: tuple[tuple[Card, ...], ...]
     stock: Deck
     discard_pile: tuple[Card, ...] = ()
+    mus: MusState = field(default_factory=MusState)
+    lance: LanceType | None = None
 
     def hand_of(self, player: SeatId) -> tuple[Card, ...]:
         return self.hands[seat(player)]
@@ -53,3 +77,10 @@ class GameState:
     def evolve(self, **changes: object) -> GameState:
         """Copia con cambios. Atajo de ``dataclasses.replace`` con tipo de retorno."""
         return replace(self, **changes)  # type: ignore[arg-type]
+
+    @property
+    def current_hand(self) -> HandState:
+        """La jugada en curso. Lanza ``InvariantViolationError`` si no la hay."""
+        if self.hand is None:
+            raise InvariantViolationError(f"No hay jugada en curso en la fase {self.phase}")
+        return self.hand
