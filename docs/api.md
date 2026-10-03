@@ -205,3 +205,27 @@ Errores: fuera de turno → `NotYourTurnError`; acción de otra fase (p. ej. mus
 descartes, descarte tras el corte) → `InvalidStateError`; naipes ajenos, del mazo, 0 o
 más de 4 → `InvalidDiscardError`; naipes repetidos → `InvalidDiscardError` al
 construir la acción.
+
+## Fase 5 — Evaluadores de grande y chica
+
+```python
+from mus_engine import ChicaEvaluator, GrandeEvaluator, resolve
+from mus_engine.cards import cards_from_codes
+from mus_engine.players import SeatId
+
+grande = GrandeEvaluator()                          # usa RankingPolicy() (ocho reyes)
+grande.strength(cards_from_codes("12O 3C 11E 1B"))  # (12, 12, 11, 1): mayor es mejor
+ChicaEvaluator().strength(cards_from_codes("1O 2C 4E 12B"))  # (-1, -1, -4, -12)
+
+hands = {SeatId(0): ..., SeatId(1): ..., SeatId(2): ..., SeatId(3): ...}
+result = resolve(grande, hands, mano=SeatId(1))
+result.winner, result.winning_team   # ganador y su pareja
+result.tied                          # empatados con el ganador (el ganador primero)
+result.decided_by_mano               # True si el empate lo resolvió la mano (D-09)
+```
+
+- `GrandeEvaluator(policy)` / `ChicaEvaluator(policy)` aceptan otra `RankingPolicy`
+  (p. ej. sin ocho reyes).
+- `strength()` exige exactamente 4 naipes distintos (`InvalidCardError`).
+- `resolve(evaluator, hands, mano)` sirve para cualquier lance y para cualquier subconjunto
+  de jugadores (en pares y juego sólo participan quienes los tienen).

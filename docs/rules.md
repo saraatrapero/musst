@@ -97,6 +97,25 @@ Voc. "Paso", C.III-11 (orden de descarte), C.III-2 (servir de una vez y en el mi
 orden), C.III-15 / D-07 (rebarajar todo el descarte), D-13 (límites), D-14 (sin límite
 de rondas). Reparto: `tests/rules/test_fem_dealing.py` (C.III-1, C.III-2).
 
+### Grande y chica (fase 5)
+
+Implementado en `rules/grande.py`, `rules/chica.py` y `rules/evaluation.py`.
+
+- **Fuerza de una jugada**: tupla de rangos efectivos (C.II-3), ordenada de mayor a menor
+  en grande y de menor a mayor en chica (C.VI-16, D-10), comparada carta a carta. En
+  chica se niegan los valores para que en ambos lances "mayor es mejor". Los palos no
+  cuentan.
+- **Empates** (D-09): `resolve()` toma la fuerza máxima y, si varios la comparten, da el
+  lance al más cercano a la mano. El desempate es explícito y no depende del orden de
+  los datos (test específico).
+- Hay 330 jugadas distintas en ocho reyes; la máxima de grande es cuatro reyes y la de
+  chica cuatro ases (C.VI-7), comprobado sobre las 91 390 manos posibles.
+- Los tantos (envites, paso) no los decide el evaluador: corresponden a las fases de
+  envites y tanteo.
+
+Tests: `tests/rules/test_fem_grande_chica.py`; propiedades frente a una implementación
+de referencia independiente en `tests/property/test_grande_chica_properties.py`.
+
 ---
 
 ## 3. Fuera de alcance del motor (y por qué)

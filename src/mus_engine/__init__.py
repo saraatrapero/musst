@@ -54,6 +54,7 @@ from mus_engine.players import (
     team_of,
 )
 from mus_engine.rng import Rng
+from mus_engine.rules import ChicaEvaluator, GrandeEvaluator, LanceResult, LanceType, resolve
 from mus_engine.scoring import GameScore
 
 __all__ = [
@@ -62,6 +63,7 @@ __all__ = [
     "AmountRange",
     "BetAction",
     "Card",
+    "ChicaEvaluator",
     "CutMusAction",
     "Deck",
     "DeckType",
@@ -73,6 +75,7 @@ __all__ = [
     "GameNotStartedError",
     "GameScore",
     "GameState",
+    "GrandeEvaluator",
     "HandState",
     "IllegalActionError",
     "InvalidBetError",
@@ -83,6 +86,8 @@ __all__ = [
     "InvalidPlayerError",
     "InvalidStateError",
     "InvariantViolationError",
+    "LanceResult",
+    "LanceType",
     "LegalActions",
     "MusAction",
     "MusEngineError",
@@ -107,5 +112,6 @@ __all__ = [
     "next_player",
     "partner",
     "previous_player",
+    "resolve",
     "team_of",
 ]
