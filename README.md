@@ -14,7 +14,7 @@ MUS.ST: no incluye interfaz, usuarios ni IA.
 |---|---|---|
 | Diseño | arquitectura, máquina de estados, análisis del reglamento | ✅ |
 | 1 | cartas, baraja, equivalencias de ocho reyes, RNG determinista, configuración, errores | ✅ |
-| 2 | jugadores, parejas y orden de la mesa | pendiente |
+| 2 | jugadores, parejas y orden de la mesa (mano, postre, turnos, sorteo del primer reparto) | ✅ |
 | 3+ | estado, reparto, mus, lances, envites, órdago, tanteo, eventos, observaciones, replay | pendiente |
 
 ## Instalación

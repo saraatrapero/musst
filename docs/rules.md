@@ -71,6 +71,24 @@ proceden del reglamento y así se indica en el código y en los tests.
 | R-35 | Partida = N juegos ganados (5 en preclasificación); juego a entre 40 y 60 tantos según la organización | Intro-E | `GameConfig.target_score` (40 por defecto) y `games_to_win` |
 | R-36 | Amarracos: los conserva un jugador de cada pareja; sirven para tantear | C.VII-3, C.VII-7 | representación de marcador, no regla (D-19) |
 
+### Interpretaciones de orden de mesa (fase 2)
+
+- **Sentido de juego.** Los asientos `0..3` se numeran en orden de habla:
+  `next_player(s)` es el jugador "a la derecha" de `s` (Voc. "Mano": la mano está a la
+  derecha del que reparte y habla primero). "A la izquierda" es, por tanto, quien habla
+  antes (`previous_player`).
+- **Orden de descarte (C.III-11).** "El primero en descartarse será el que los da; el
+  descarte continuará de izquierda a derecha hasta el mano": postre, 3º, 2º, mano
+  (`discard_order`).
+- **"Será mano el que corte el mus" (C.III-1).** Se interpreta como que el mano es el
+  primero en decidir si hay mus; es coherente con C.IV-4 y con Voc. "Paso" ("cortar el
+  mus si se es mano"). No altera la definición de mano (Voc. "Mano").
+- **Corte del sorteo (C.III-3).** Corta "el jugador a la izquierda del que los haya
+  barajado" (`cutter_for`); el palo del naipe asigna el primer reparto (C.III-1,
+  `first_dealer_by_suit`).
+
+Tests: `tests/rules/test_fem_seating.py` (R-03, R-04, R-06, R-08, R-10, D-15).
+
 ---
 
 ## 3. Fuera de alcance del motor (y por qué)

@@ -78,3 +78,43 @@ MusEngineError
 ├── PrivateInformationError
 └── InvariantViolationError   (bug del motor; nunca capturar para continuar)
 ```
+
+## Fase 2 — Jugadores, parejas y orden de la mesa
+
+### `Player`, `Team`, `Table`
+
+```python
+table = Table.from_names(("Ana", "Bea", "Carlos", "Dani"))   # asientos 0..3 en orden de habla
+table.player(1)               # Player(id=1, name="Bea")
+table.get_partner(0)          # Player(id=2, name="Carlos")
+table.get_team(3)             # Team(id=TeamId.B, seats=(1, 3))
+table.are_teammates(0, 2)     # True
+```
+
+- `Player` es sólo identidad (asiento + nombre): **no** tiene mano, estrategia ni
+  estadísticas. Inmutable.
+- Parejas fijas: `TeamId.A` = asientos 0 y 2, `TeamId.B` = 1 y 3 (los puestos no cambian
+  durante la partida, C.II-1).
+- Cualquier id fuera de `0..3` (o que no sea `int`) lanza `InvalidPlayerError`.
+
+### Orden de la mesa (`mus_engine.players`)
+
+| Función | Significado |
+|---|---|
+| `next_player(s)` / `previous_player(s)` | quien habla después / antes de `s` |
+| `partner(s)`, `team_of(s)`, `are_teammates(a, b)` | parejas |
+| `mano_for_dealer(d)` | mano = jugador a la derecha del que reparte (Voc. "Mano") |
+| `dealer_for_mano(m)` | postre = quien reparte |
+| `next_dealer(d)` | quien reparte la jugada siguiente (D-15) |
+| `is_mano(s, mano)`, `is_postre(s, mano)` | posición en la jugada |
+| `order_from(s)` | los 4 asientos en orden de habla desde `s` |
+| `distance_from_mano(s, mano)` | 0 (mano) … 3 (postre); base de desempates (D-09) |
+| `closest_to_mano(seats, mano)` | quien gana un empate entre `seats` |
+| `lance_mano(mano, eligible)` / `lance_postre(...)` | mano/postre del lance en pares o juego |
+| `mus_order(mano)` | orden para dar o cortar mus (C.IV-4) |
+| `discard_order(mano)` | postre → mano (C.III-11) |
+| `deal_order(dealer)` | reparto desde la mano (C.III-2) |
+| `cutter_for(shuffler)`, `first_dealer_by_suit(cutter, suit)` | sorteo del primer reparto (C.III-1, C.III-3) |
+
+**Mano ≠ turno ≠ último que envida ≠ quien corta el mus.** La mano es una posición fija
+durante la jugada; el turno lo decide la máquina de estados (fase 3+).
