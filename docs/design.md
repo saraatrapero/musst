@@ -570,4 +570,4 @@ revisión, y un commit. No se pasa a la siguiente sin tu visto bueno.
 | 15 | Replay | replay ≡ partida, navegación |
 | 16 | Tests de propiedad y partidas completas; docs finales | ver §9 |
 
-(La numeración agrupa algunas fases de tu lista de 18; el orden es el mismo.)
+(La numeración agrupa algunas fases de tu lista de 18; el orden es el mismo. Las fases 3 y 4 se entregaron juntas: `start()` necesita repartir para llegar a una fase de decisión.)

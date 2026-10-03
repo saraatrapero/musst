@@ -55,6 +55,11 @@ class GameConfig:
     points_negada: int = 1
     points_deje: int = 1
 
+    # Sorteo del primer reparto (C.III-1, C.III-3; D-03). Asientos 0..3.
+    # ``first_dealer`` fija el primer repartidor y omite el sorteo (útil en tests).
+    first_shuffler: int = 0
+    first_dealer: int | None = None
+
     # Representación del marcador (D-19). No afecta a las reglas.
     tantos_per_amarraco: int = 5
 
@@ -87,6 +92,14 @@ class GameConfig:
             # bool es subclase de int: se rechaza explícitamente.
             if not isinstance(value, int) or isinstance(value, bool) or value < 1:
                 raise InvalidConfigError(f"{name} debe ser un entero >= 1 (recibido {value!r})")
+        if not _is_seat(self.first_shuffler):
+            raise InvalidConfigError(
+                f"first_shuffler debe ser un asiento 0..3: {self.first_shuffler!r}"
+            )
+        if self.first_dealer is not None and not _is_seat(self.first_dealer):
+            raise InvalidConfigError(
+                f"first_dealer debe ser None o un asiento 0..3: {self.first_dealer!r}"
+            )
         if self.cards_per_hand != 4:
             raise InvalidConfigError("El Mus se juega con 4 naipes por jugador")
         if self.max_discard > self.cards_per_hand:
@@ -97,3 +110,8 @@ class GameConfig:
             raise InvalidConfigError("Se requiere pareja < medias < duples")
         if self.points_juego_other > self.points_juego_31:
             raise InvalidConfigError("El juego de 31 no puede valer menos que otro juego")
+
+
+def _is_seat(value: object) -> bool:
+    # No se importa ``players.seating`` para evitar un ciclo (cards -> config).
+    return isinstance(value, int) and not isinstance(value, bool) and 0 <= value < 4

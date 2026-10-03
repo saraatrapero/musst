@@ -118,3 +118,64 @@ table.are_teammates(0, 2)     # True
 
 **Mano ≠ turno ≠ último que envida ≠ quien corta el mus.** La mano es una posición fija
 durante la jugada; el turno lo decide la máquina de estados (fase 3+).
+
+## Fase 3 — Partida, estado, acciones y eventos
+
+### `Game`
+
+```python
+from mus_engine import Game, GameConfig, MusAction
+
+game = Game(players=("Ana", "Bea", "Carlos", "Dani"), config=GameConfig(), seed=12345)
+game.start()                       # sorteo del primer reparto + reparto -> MUS_DECISION
+game.phase                         # Phase.MUS_DECISION
+game.mano, game.dealer             # mano y postre de la jugada en curso
+game.is_hand(0)                    # ¿es mano el jugador 0?
+game.current_actors()              # quién puede actuar ahora
+game.get_legal_actions(0)          # LegalActions
+game.apply_action(0, MusAction())  # valida y aplica; devuelve los eventos que ve el jugador 0
+game.get_events(viewer=0)          # historial visible para el jugador 0
+game.get_events()                  # sólo eventos públicos
+game.get_state()                   # GameState completo (¡con secretos! no darlo a jugadores)
+game.event_log                     # registro completo (auditoría / replay)
+game.seed                          # semilla (generada si no se pasa)
+```
+
+- Misma semilla + mismas acciones ⇒ mismos estados y mismos eventos.
+- `GameConfig(first_dealer=n)` fija el primer repartidor (omite el sorteo de C.III-1).
+- También: `get_player`, `get_partner`, `get_team`, `are_teammates`, `next_player`,
+  `previous_player`, `is_finished`, `winner`.
+
+### Acciones
+
+`MusAction`, `CutMusAction`, `DiscardAction(cards)`, `PassAction`, `BetAction(amount)`,
+`RaiseAction(amount)` (sube *amount* sobre lo envidado), `AcceptAction`,
+`RejectAction`, `OrdagoAction`. Inmutables; la construcción valida tipos
+(`DiscardAction` rechaza duplicados y objetos que no son naipes; los importes deben
+ser enteros positivos). La legalidad la decide siempre el motor.
+
+### `LegalActions`
+
+```python
+legal = game.get_legal_actions(0)
+legal.contains(action)    # True si el motor aceptaría la acción
+legal.actions             # acciones discretas
+legal.bet, legal.raise_   # AmountRange(minimum, maximum|None) para envites y revoques
+legal.action_types()      # tipos de acción disponibles
+list(legal)               # acciones concretas (rangos representados por su mínimo)
+```
+
+### Eventos
+
+`EventEnvelope(seq, hand_number, visibility, event, audience)`, con `visibility` en
+`PUBLIC`, `PRIVATE` (sólo `audience`) o `ENGINE` (nunca llega a jugadores: semilla y
+orden de la baraja). `envelope.visible_to(seat)`.
+
+Eventos actuales: `GameStarted`, `RngSeeded` (motor), `FirstDealerDrawn`,
+`FirstDealerFixed`, `HandStarted`, `DeckShuffled` (motor), `CardsDealt` (privado),
+`PhaseChanged`.
+
+### `GameState` / `HandState` / `GameScore`
+
+Valores inmutables. `HandState`: `number`, `dealer`, `mano`, `hands` (por asiento),
+`stock` (mazo), `discard_pile`. `GameScore`: `tantos` y `games` por pareja.

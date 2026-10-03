@@ -14,8 +14,8 @@ python -m pytest --cov=mus_engine --cov-report=term-missing
 | `tests/rules/` | un test por regla del reglamento (`R-xx`) o decisión (`D-xx`); el docstring cita el artículo |
 | `tests/property/` | propiedades con Hypothesis (p. ej. todo barajado es una permutación de las 40) |
 | `tests/regression/` | un test por bug encontrado o por compatibilidad que no debe romperse |
-| `tests/integration/` | partidas completas con semilla (a partir de la fase 4) |
-| `tests/security/` | información privada e inmutabilidad de observaciones (fase 16) |
+| `tests/integration/` | uso de `Game` de extremo a extremo con semilla; partidas completas cuando estén todos los lances |
+| `tests/security/` | información privada (eventos visibles por jugador) e inmutabilidad |
 
 ## Cómo añadir un test
 
@@ -30,4 +30,10 @@ python -m pytest --cov=mus_engine --cov-report=term-missing
 
 - `mypy --strict` también sobre los tests.
 - Cobertura objetivo: 100 % en `cards/`, `rules/`, `betting/`, `scoring/`.
-- Fase 1: 114 tests; fase 2: 183 tests acumulados. Cobertura 100 %.
+- Tests acumulados: fase 1: 114; fase 2: 183; fase 3: 290. Cobertura 100 %.
+
+## Construir estados concretos
+
+`tests/factories.py` ofrece `started_game(seed, **config)` y `game_with_state(state)`
+para colocar una partida en un estado preciso (p. ej. terminada o con marcador
+39–39). Es sólo para tests: la API pública no permite fijar el estado.

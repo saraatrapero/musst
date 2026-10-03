@@ -86,6 +86,11 @@ class Table:
             )
         )
 
+    @property
+    def names(self) -> tuple[str, str, str, str]:
+        a, b, c, d = self.players
+        return a.name, b.name, c.name, d.name
+
     def player(self, player_id: object) -> Player:
         return self.players[seat(player_id)]
 
