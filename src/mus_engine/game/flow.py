@@ -20,21 +20,16 @@ from mus_engine.events.events import (
     FirstDealerDrawn,
     FirstDealerFixed,
     HandStarted,
-    PhaseChanged,
 )
+from mus_engine.game import lance_flow
 from mus_engine.game.phases import Phase
 from mus_engine.game.state import GameState, HandState, MusState
+from mus_engine.game.transition import Step, enter
 from mus_engine.players.seating import ALL_SEATS, SeatId, discard_order, mano_for_dealer
 from mus_engine.rules.dealing import deal_hands, draw_first_dealer
 from mus_engine.rules.mus import serve_discards, sorted_by_hand
 
-Step = tuple[GameState, tuple[Emission, ...]]
-
 MAX_AUTOMATIC_STEPS = 64
-
-
-def enter(state: GameState, phase: Phase) -> Step:
-    return state.evolve(phase=phase), (Emission.public(PhaseChanged(phase.value)),)
 
 
 def choose_first_dealer(state: GameState) -> Step:
@@ -118,6 +113,10 @@ AUTOMATIC_STEPS: dict[Phase, Callable[[GameState], Step]] = {
     Phase.CHOOSE_FIRST_DEALER: choose_first_dealer,
     Phase.DEAL: deal,
     Phase.REDEAL: redeal,
+    Phase.LANCE_START: lance_flow.lance_start,
+    Phase.ORDAGO_SHOWDOWN: lance_flow.ordago_showdown,
+    Phase.HAND_SCORING: lance_flow.hand_scoring,
+    Phase.NEW_HAND: lance_flow.new_hand,
 }
 
 

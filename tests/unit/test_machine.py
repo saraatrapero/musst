@@ -17,8 +17,8 @@ from mus_engine.errors import (
 from mus_engine.events import Emission, PhaseChanged
 from mus_engine.game import machine
 from mus_engine.game.actions import Action
-from mus_engine.game.flow import Step
 from mus_engine.game.state import GameState
+from mus_engine.game.transition import Step
 from mus_engine.players import SeatId
 
 
@@ -48,7 +48,7 @@ def fake_handler(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_without_handler_every_action_is_invalid_state() -> None:
-    state = started_game().get_state().evolve(phase=Phase.LANCE)
+    state = started_game().get_state().evolve(phase=Phase.GAME_OVER)
     assert machine.actors(state) == ()
     assert not machine.legal_actions(state, SeatId(0))
     with pytest.raises(InvalidStateError):

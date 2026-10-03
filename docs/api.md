@@ -271,3 +271,32 @@ punto_points(GameConfig())         # 1
 
 juego_or_punto(all_hands, juego)   # LanceType.JUEGO o LanceType.PUNTO
 ```
+
+## Fases 8–10 — Envites, órdago, tanteo y final
+
+```python
+from mus_engine import AcceptAction, BetAction, OrdagoAction, PassAction, RaiseAction, RejectAction
+
+(player,) = game.current_actors()
+legal = game.get_legal_actions(player)
+legal.bet          # AmountRange(2, None) si puede envidar
+legal.raise_       # AmountRange(2, None) si puede revocar ("N más")
+game.apply_action(player, BetAction(2))
+game.apply_action(rival, RaiseAction(3))     # sube 3 sobre lo envidado
+game.apply_action(other, AcceptAction())     # o RejectAction(), OrdagoAction()
+
+hand = game.get_state().current_hand
+hand.lance          # LanceType en curso
+hand.bet            # BetState: status, participants, to_act, accepted, pending, proposer, is_ordago
+hand.outcomes       # LanceOutcome de los lances cerrados
+hand.pares_holders, hand.juego_holders   # declaraciones públicas
+
+game.get_state().score    # GameScore(tantos, games)
+game.is_finished, game.winner
+```
+
+`GameConfig(target_score=40, games_to_win=1)`: tanteo de cada juego y juegos para ganar
+la partida. Detalle del tanteo en `docs/scoring.md`.
+
+Puntuación programática: `ScoringEngine(config)` con `end_of_hand_entries(...)`,
+`apply(score, entries)` y `ordago_entry(...)`; `rejection_points(bet, config)`.

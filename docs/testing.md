@@ -30,16 +30,21 @@ python -m pytest --cov=mus_engine --cov-report=term-missing
 
 - `mypy --strict` también sobre los tests.
 - Cobertura objetivo: 100 % en `cards/`, `rules/`, `betting/`, `scoring/`.
-- Tests acumulados: fase 1: 114; fase 2: 183; fase 3: 290; fase 4: 347; fase 5: 401; fase 6: 455; fase 7: 504. Cobertura 100 %.
+- Tests acumulados: fase 1: 114; fase 2: 183; fase 3: 290; fase 4: 347; fase 5: 401; fase 6: 455; fase 7: 504; fases 8–10: 639. Cobertura 100 %.
 
 ## Utilidades
 
-- `tests/play.py`: jugar por la API pública (`all_mus`, `discard_all`, `cut`, `actor`).
+- `tests/play.py`: jugar por la API pública (`all_mus`, `discard_all`, `cut`, `actor`,
+  `pass_lance`, `act`, `points_events`).
+- `tests/factories.py`: `game_at_lance(hands, tantos=..., games=..., **config)` coloca una
+  partida al empezar los lances con manos elegidas (resto de la baraja en el mazo).
 - `tests/strategies.py`: `play_random_legal(game, data, max_steps)` elige acciones
-  legales al azar con Hypothesis y devuelve las aplicadas (permite reproducirlas).
+  legales al azar con Hypothesis y devuelve las aplicadas (permite reproducirlas);
+  `play_seeded(game, seed, max_steps)` hace lo mismo con un `random.Random` para partidas
+  completas.
 - `tests/visibility.py`: `cards_in(obj)` extrae recursivamente todos los naipes de un
-  objeto; `cards_ever_held(game, seat)` los que un jugador ha tenido. Base de los tests
-  de información privada.
+  objeto; `cards_ever_held(game, seat)` los que un jugador ha tenido y `cards_known`
+  añade los enseñados legítimamente. Base de los tests de información privada.
 
 ## Construir estados concretos
 

@@ -18,7 +18,7 @@ def test_random_legal_mus_play_keeps_invariants(seed: int, data: st.DataObject) 
     play_random_legal(game, data, max_steps=60)
     state = game.get_state()
     invariants.check_state(state)
-    assert state.phase in (Phase.MUS_DECISION, Phase.DISCARD, Phase.LANCE)
+    assert state.phase in (Phase.MUS_DECISION, Phase.DISCARD, Phase.LANCE, Phase.GAME_OVER)
 
 
 @settings(max_examples=60)

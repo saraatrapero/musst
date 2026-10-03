@@ -6,17 +6,19 @@ Un fallo lanza :class:`InvariantViolationError`: es un bug del motor, no del usu
 
 from __future__ import annotations
 
+from mus_engine.betting.bets import BetStatus
 from mus_engine.cards.deck import validate_complete
 from mus_engine.errors import InvalidDeckError, InvariantViolationError
 from mus_engine.game.phases import Phase
 from mus_engine.game.state import GameState
-from mus_engine.players.seating import NUM_SEATS, TeamId, mano_for_dealer
+from mus_engine.players.seating import NUM_SEATS, TeamId, are_teammates, mano_for_dealer, team_of
 
 
 def check_state(state: GameState) -> None:
     _check_cards(state)
     _check_positions(state)
     _check_mus(state)
+    _check_bet(state)
     _check_score(state)
 
 
@@ -74,6 +76,30 @@ def _check_mus(state: GameState) -> None:
     for player, cards in enumerate(mus.discards):
         if cards is not None and not cards <= set(hand.hands[player]):
             raise InvariantViolationError(f"El descarte del jugador {player} no es de su mano")
+
+
+def _check_bet(state: GameState) -> None:
+    hand = state.hand
+    if state.phase is not Phase.LANCE:
+        return
+    bet = None if hand is None else hand.bet
+    if hand is None or bet is None:
+        raise InvariantViolationError("Fase LANCE sin envite")
+    if bet.lance is not hand.lance:
+        raise InvariantViolationError("El envite no corresponde al lance en curso")
+    if bet.status.is_closed or not bet.to_act:
+        raise InvariantViolationError(f"Envite cerrado o sin turno en fase LANCE: {bet}")
+    if not set(bet.to_act) <= set(bet.participants):
+        raise InvariantViolationError("Habla un jugador que no participa en el lance")
+    if len({team_of(p) for p in bet.participants}) != 2:
+        raise InvariantViolationError("Hay envites sin que participen las dos parejas")
+    if bet.status is BetStatus.PENDING:
+        if bet.proposer is None or any(are_teammates(p, bet.proposer) for p in bet.to_act):
+            raise InvariantViolationError("Con un envite pendiente sólo contestan los rivales")
+        if not bet.is_ordago and not 0 <= bet.accepted < bet.pending:
+            raise InvariantViolationError(f"Importes de envite incoherentes: {bet}")
+    elif bet.proposer is not None or bet.accepted or bet.pending:
+        raise InvariantViolationError(f"Lance abierto con envite registrado: {bet}")
 
 
 def _check_score(state: GameState) -> None:

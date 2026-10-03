@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
 
+from mus_engine.betting.bets import BetState
 from mus_engine.cards.card import Card
 from mus_engine.cards.deck import Deck
 from mus_engine.config import GameConfig
@@ -19,6 +20,7 @@ from mus_engine.players.seating import SeatId, TeamId, seat
 from mus_engine.rng import Rng
 from mus_engine.rules.lance import LanceType
 from mus_engine.scoring.score import GameScore
+from mus_engine.scoring.scoring import LanceOutcome
 
 
 @dataclass(frozen=True, slots=True)
@@ -53,6 +55,11 @@ class HandState:
     discard_pile: tuple[Card, ...] = ()
     mus: MusState = field(default_factory=MusState)
     lance: LanceType | None = None
+    bet: BetState | None = None
+    outcomes: tuple[LanceOutcome, ...] = ()
+    pares_holders: tuple[bool, ...] | None = None  # declaración pública de pares
+    juego_holders: tuple[bool, ...] | None = None  # declaración pública de juego
+    revealed: bool = False  # se han enseñado las cuatro manos
 
     def hand_of(self, player: SeatId) -> tuple[Card, ...]:
         return self.hands[seat(player)]

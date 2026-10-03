@@ -15,45 +15,51 @@ Invariante: tras `start()` o `apply_action()` el estado está siempre en una fas
 decisión, en `NOT_STARTED` o en `GAME_OVER` (`Phase.is_resting`). Cada cambio de fase
 emite el evento público `PhaseChanged`.
 
-## Estado actual (fase 4)
+## Diagrama completo
 
 ```text
 NOT_STARTED ──start()──► [CHOOSE_FIRST_DEALER]* ──► [DEAL]* ──► MUS_DECISION ◄──────────┐
-                          C.III-1 / D-03             C.III-2        │                      │
-                                                                    ├─ 4 × mus ─► DISCARD ─┤
-                                                                    │            C.III-11  │
-                                                                    │                [REDEAL]*
-                                                                    │           C.III-2, C.III-15
-                                                                    └─ corte ─► LANCE (grande)
+                          C.III-1 / D-03             C.III-2  ▲     │                      │
+                                                              │     ├─ 4 × mus ─► DISCARD ─┤
+                                                              │     │            C.III-11  │
+                                                              │     │                [REDEAL]*
+                                                              │     └─ corte
+                                                              │          ▼
+                                     ┌──────────────► [LANCE_START]* (grande, chica, pares, juego|punto)
+                                     │                 │  declaraciones de pares/juego (públicas)
+                                     │                 ├─ sin envites (una pareja / nadie) ──┐
+                                     │                 ▼                                     │
+                                     │               LANCE  (paso, envite, revoque,          │
+                                     │                 │     quiero, no quiero, órdago)       │
+                                     │   no quiero:    ├─ cerrado ───────────────────────────┤
+                                     │   anota en el   │                                     │
+                                     │   acto (puede   ├─ órdago querido ─► [ORDAGO_SHOWDOWN]* ──► fin de juego
+                                     │   acabar juego) │                                     │
+                                     └── siguiente ◄───┘◄────────────────────────────────────┘
+                                         lance
+                                           │ tras juego/punto
+                                           ▼
+                                    [HAND_SCORING]* ──► fin de juego ──┬─► GAME_OVER (partida ganada)
+                                           │                           └─► [NEW_HAND]*
+                                           └─► [NEW_HAND]* ──► [DEAL]* (reparte el que fue mano, D-15)
 (*) automática
 ```
 
-| Fase | Tipo | Quién actúa | Acciones legales | Eventos | Siguiente |
-|---|---|---|---|---|---|
-| `NOT_STARTED` | reposo | nadie (sólo `start()`) | — | `RngSeeded` (motor), `GameStarted` | `CHOOSE_FIRST_DEALER` |
-| `CHOOSE_FIRST_DEALER` | automática | — | — | `FirstDealerDrawn` o `FirstDealerFixed` | `DEAL` |
-| `DEAL` | automática | — | — | `HandStarted`, `DeckShuffled` (motor), `CardsDealt` (privado ×4) | `MUS_DECISION` |
-| `MUS_DECISION` | decisión | uno a uno: mano, 2º, 3º, 4º (C.IV-4) | `MusAction`, `CutMusAction` | `MusRequested` / `MusCut` | 4 × mus → `DISCARD`; corte → `LANCE` (grande) |
-| `DISCARD` | decisión | uno a uno: postre, 3º, 2º, mano (C.III-11) | `DiscardAction` de 1 a 4 naipes propios (D-13) | `DiscardDeclared` (público: sólo el número) | tras el mano → `REDEAL` |
-| `REDEAL` | automática | — | — | `DiscardPileReshuffled` + `DeckShuffled` (motor) si se acaba el mazo; `CardsDiscarded` (privado ×4) | `MUS_DECISION` (nueva ronda, vuelve a hablar la mano) |
-| `LANCE` | decisión | *(fases siguientes)* | — | — | — |
-| `GAME_OVER` | terminal | nadie | ninguna (`GameFinishedError`) | — | — |
-
-Detalles del mus:
-
-- El primer "no hay mus" de cualquier jugador, en su turno, corta el mus (D-04). Para
-  la mano, cortar equivale a "paso" (Voc. "Paso").
-- Los descartes se declaran en orden y quedan **pendientes**; al declararse el último
-  (el mano), `REDEAL` los pasa todos al montón y sirve a cada jugador de una vez, en el
-  mismo orden (C.III-2, D-06).
-- Si el mazo no alcanza, se sirve lo que queda y después se baraja **todo** el
-  descarte, incluidos los naipes tirados en esa ronda, para seguir sirviendo
-  (C.III-15, D-07). Un jugador puede, por tanto, recibir un naipe que acaba de tirar.
-- No hay límite de rondas de mus (D-14).
-
-`LANCE` todavía no tiene manejador: es la frontera de la fase 4 (test explícito).
-
-El diagrama objetivo completo está en `docs/design.md` §3.
+| Fase | Tipo | Quién actúa | Acciones legales | Eventos principales |
+|---|---|---|---|---|
+| `NOT_STARTED` | reposo | nadie (sólo `start()`) | — | `RngSeeded` (motor), `GameStarted` |
+| `CHOOSE_FIRST_DEALER` | automática | — | — | `FirstDealerDrawn` / `FirstDealerFixed` |
+| `DEAL` | automática | — | — | `HandStarted`, `DeckShuffled` (motor), `CardsDealt` (privado) |
+| `MUS_DECISION` | decisión | mano, 2º, 3º, 4º (C.IV-4) | `MusAction`, `CutMusAction` | `MusRequested`, `MusCut` |
+| `DISCARD` | decisión | postre → mano (C.III-11) | `DiscardAction` (1–4 naipes propios) | `DiscardDeclared` (sólo el número) |
+| `REDEAL` | automática | — | — | `CardsDiscarded` (privado), `DiscardPileReshuffled` |
+| `LANCE_START` | automática | — | — | `ParesDeclared`, `JuegoDeclared`, `LanceStarted`, `LanceUncontested`, `LanceNotPlayed` |
+| `LANCE` abierto | decisión | participantes en orden desde la mano | `PassAction`, `BetAction(n ≥ 2)`, `OrdagoAction` | `Passed`, `BetPlaced`, `OrdagoDeclared` |
+| `LANCE` con envite | decisión | rivales del que envidó, en orden | `AcceptAction`, `RejectAction`, `RaiseAction(n ≥ 2)`, `OrdagoAction` (sin revoque ni órdago si ya hay órdago) | `BetAccepted`, `BetRejected`, `BetRaised`, `OrdagoAccepted`, `LanceClosed`, `PointsAwarded` |
+| `ORDAGO_SHOWDOWN` | automática | — | — | `HandsRevealed`, `LanceResolved`, `PointsAwarded`, `GameWon` |
+| `HAND_SCORING` | automática | — | — | `HandsRevealed`, `LanceResolved`, `PointsAwarded`, `GameWon` |
+| `NEW_HAND` | automática | — | — | — |
+| `GAME_OVER` | terminal | nadie | ninguna (`GameFinishedError`) | `GameFinished` |
 
 ## Cadena de validación de `apply_action`
 

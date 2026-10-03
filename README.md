@@ -20,7 +20,8 @@ MUS.ST: no incluye interfaz, usuarios ni IA.
 | 5 | evaluadores de grande y chica, resolución de empates por la mano | ✅ |
 | 6 | pares: categorías, comparación, valor y participación en el lance | ✅ |
 | 7 | juego y punto: totales, orden, valor y elección del lance | ✅ |
-| 8+ | envites, órdago, tanteo y final, observaciones, replay | pendiente |
+| 8–10 | envites, revoques, órdago, tanteo en el orden reglamentario, final de juego y partida | ✅ |
+| 11+ | observaciones por jugador, replay, documentación final | pendiente |
 
 ## Instalación
 
@@ -67,5 +68,6 @@ python -m mypy                   # modo estricto sobre src/ y tests/
 - [`docs/design.md`](docs/design.md) — arquitectura, modelo de datos, máquina de estados, plan.
 - [`docs/rules.md`](docs/rules.md) — trazabilidad con el reglamento y decisiones aprobadas.
 - [`docs/state-machine.md`](docs/state-machine.md) — fases, validación y cómo añadir fases.
+- [`docs/scoring.md`](docs/scoring.md) — cuándo y cuánto se anota.
 - [`docs/api.md`](docs/api.md) — API pública.
 - [`docs/testing.md`](docs/testing.md) — estrategia de tests y cómo añadir tests.

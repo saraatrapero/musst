@@ -192,10 +192,11 @@ def test_discard_out_of_turn(game) -> None:  # type: ignore[no-untyped-def]
 
 def test_no_mus_or_discard_after_cut(game) -> None:  # type: ignore[no-untyped-def]
     cut(game)
+    player = actor(game)
     with pytest.raises(InvalidStateError):
-        game.apply_action(1, MusAction())
+        game.apply_action(player, MusAction())
     with pytest.raises(InvalidStateError):
-        game.apply_action(1, DiscardAction(hand_of(game, 1)[:1]))
+        game.apply_action(player, DiscardAction(hand_of(game, player)[:1]))
 
 
 def test_rejected_action_leaves_state_untouched(game) -> None:  # type: ignore[no-untyped-def]

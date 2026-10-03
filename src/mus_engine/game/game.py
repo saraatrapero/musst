@@ -28,10 +28,11 @@ from mus_engine.events.events import (
 )
 from mus_engine.game import invariants, machine
 from mus_engine.game.actions import Action
-from mus_engine.game.flow import enter, run_automatic
+from mus_engine.game.flow import run_automatic
 from mus_engine.game.legal import LegalActions
 from mus_engine.game.phases import Phase
 from mus_engine.game.state import GameState
+from mus_engine.game.transition import enter
 from mus_engine.players import seating
 from mus_engine.players.player import Player, Table, Team
 from mus_engine.players.seating import SeatId, TeamId

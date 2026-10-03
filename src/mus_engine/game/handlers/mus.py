@@ -13,10 +13,10 @@ from dataclasses import replace
 from mus_engine.errors import IllegalActionError, InvalidStateError, InvariantViolationError
 from mus_engine.events.events import DiscardDeclared, Emission, MusCut, MusRequested
 from mus_engine.game.actions import Action, CutMusAction, DiscardAction, MusAction
-from mus_engine.game.flow import Step, enter
 from mus_engine.game.legal import LegalActions
 from mus_engine.game.phases import Phase
 from mus_engine.game.state import GameState, HandState, MusState
+from mus_engine.game.transition import Step, enter
 from mus_engine.players.seating import NUM_SEATS, SeatId, discard_order, mus_order
 from mus_engine.rules.lance import LanceType
 from mus_engine.rules.mus import check_discard, discard_options
@@ -55,7 +55,7 @@ class MusDecisionHandler:
         if isinstance(action, CutMusAction):
             cut = _with_mus(state, hand, replace(mus, cut_by=player))
             cut = cut.evolve(hand=replace(cut.current_hand, lance=LanceType.GRANDE))
-            entered_state, entered = enter(cut, Phase.LANCE)
+            entered_state, entered = enter(cut, Phase.LANCE_START)
             return entered_state, (Emission.public(MusCut(player)), *entered)
         requested = replace(
             mus, speaker_index=mus.speaker_index + 1, requested=(*mus.requested, player)

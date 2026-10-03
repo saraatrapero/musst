@@ -154,6 +154,34 @@ Implementado en `rules/juego.py` y `rules/punto.py`.
 Tests: `tests/rules/test_fem_juego_punto.py`, `tests/unit/test_juego_punto.py`,
 `tests/property/test_juego_punto_properties.py`.
 
+### Envites, órdago, tanteo y final (fases 8–10)
+
+Implementado en `betting/bets.py`, `game/handlers/lance.py`, `game/lance_flow.py` y
+`scoring/scoring.py`. Ver `docs/scoring.md`.
+
+| Regla | Implementación | Test |
+|---|---|---|
+| R-19 en pares/juego sólo hablan los que los tienen | participantes = poseedores en orden desde la mano | `test_player_without_pares_cannot_speak_in_pares` |
+| R-20 declaración veraz | `ParesDeclared` / `JuegoDeclared` automáticos | `test_lance_order_and_participants` |
+| R-21 envido 2 o N | `BetAction(amount >= min_bet)` | `test_r21_*` |
+| R-24 el compañero no sube con envite en litigio | sólo los rivales están en `to_act` | `test_r24_*`, `test_partner_of_proposer_cannot_raise` |
+| R-25 vale el quiero | basta un `AcceptAction` de un rival | `test_r25_*` |
+| R-26 no contestar = no querer | `RejectAction` | `test_negada_is_scored_immediately` |
+| R-27 negada | 1 tanto si se rechaza la primera apuesta | `test_r27_*` |
+| R-28 / D-16 deje | revoque rechazado = lo querido (+1 en pares, juego, punto) | `test_r28_*`, `test_rejected_raise_*` |
+| R-29 momento de anotar | negadas en el acto; resto al final | `test_r29_*` |
+| R-30 envites sin máximo | importes sin límite superior | `test_r30_*` |
+| R-31 sólo el órdago resuelve en el acto | `ORDAGO_SHOWDOWN` | `test_r31_*` |
+| R-32 el órdago anula envites anteriores | sólo se anota el órdago | `test_r32_*`, `test_ordago_annuls_*` |
+| R-33 / D-17 / D-26 tras "no quiero" el lance es del proponente | `Resolution.REJECTED` con `team` | `test_r33_*` |
+| R-34 se enseñan las cuatro manos | `HandsRevealed` al final | `test_r34_*` |
+| D-20 una sola pareja con la jugada | `Resolution.UNCONTESTED` | `test_d20_*` |
+| D-22 el recuento se detiene al llegar al tanteo | `ScoringEngine.apply` | `test_d22_*`, `test_score_edges.py` |
+| D-23 se gana con >= tanteo | ídem | `test_d23_*` |
+| D-24a penalizaciones del postre con jugada mínima | **no modeladas** (desviación documentada) | — |
+| D-25 quien pasó puede contestar | rivales del proponente entre los participantes | `test_passer_can_answer_later_bet` |
+| Intro-E partida a N juegos | `games_to_win`; al ganar un juego se reinicia el tanteo | `test_several_games_*`, `test_last_game_*` |
+
 ---
 
 ## 3. Fuera de alcance del motor (y por qué)
@@ -208,6 +236,8 @@ para el motor.
 | D-16 | Cuánto vale un revoque no aceptado | Voc. "Negada" (1 tanto la primera apuesta) y "Deje" ("tanto sumado a los ya ganados" en pares, juego, punto); C.VII-2 "tantos de envites revocados y no aceptados" | **grande/chica**: lo ya querido antes del revoque. **pares/juego/punto**: lo ya querido + 1 (el deje). Requiere tu confirmación: es la lectura literal pero no es la práctica habitual en muchas mesas |
 | D-17 | Tras un "no quiero" en pares/juego, ¿quién cobra el valor de las jugadas? | C.VI-7: "ganando el lance sus rivales" | el lance es de la pareja que envidó: cobra la negada/deje y, al final, el valor de **sus** pares/juego |
 | D-18 | Importe mínimo de envite y de revoque | Voc.: envido = 2; "envido N"; "reenvido: doblar el valor" | envite ≥ 2; revoque = "N más" con N ≥ 2. Alternativa literal: sólo envido 2/N y reenvido = doblar |
+| D-25 | ¿Un jugador que pasó puede contestar a un envite posterior? | No lo prohíbe; C.VI-3/4 hablan de los rivales | sí, si es rival del que envida (diseño aprobado, A-13) |
+| D-26 | Tras un "no quiero" en punto, ¿quién cobra el punto? | C.VI-7: "ganando el lance sus rivales" en cualquier lance | la pareja que envidó cobra el valor del punto al final, igual que pares y juego (D-17) |
 | D-21 | ¿Puede responderse con órdago a un envite? | C.VI-1, C.VI-21 mencionan "envite, revoque u órdago" en litigio, sin prohibirlo | sí, el órdago es un revoque válido (no se puede revocar un órdago) |
 | D-22 | Fin del juego a mitad de jugada | C.VI-6: envites aceptados al final y por orden de lances; C.VII-2: negadas en cada lance. No dice si se para al llegar al tanteo | el juego termina en el momento en que una pareja alcanza el tanteo (≥ 40), sea por una negada durante los lances o en el recuento final; el recuento se detiene ahí |
 | D-23 | Ganar con exactamente 40 o ≥ 40 | No lo define | ≥ `target_score` |

@@ -16,11 +16,13 @@ from mus_engine.errors import (
     NotYourTurnError,
 )
 from mus_engine.game.actions import Action
-from mus_engine.game.flow import Step, run_automatic
+from mus_engine.game.flow import run_automatic
+from mus_engine.game.handlers.lance import LanceHandler
 from mus_engine.game.handlers.mus import DiscardHandler, MusDecisionHandler
 from mus_engine.game.legal import NO_ACTIONS, LegalActions
 from mus_engine.game.phases import Phase
 from mus_engine.game.state import GameState
+from mus_engine.game.transition import Step
 from mus_engine.players.seating import SeatId
 
 
@@ -47,6 +49,7 @@ class PhaseHandler(Protocol):
 HANDLERS: dict[Phase, PhaseHandler] = {
     Phase.MUS_DECISION: MusDecisionHandler(),
     Phase.DISCARD: DiscardHandler(),
+    Phase.LANCE: LanceHandler(),
 }
 
 
