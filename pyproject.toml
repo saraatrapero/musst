@@ -1,0 +1,12 @@
+[project]
+name = "musst"
+version = "0.1.0"
+description = "MUS.ST core engine foundation"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
