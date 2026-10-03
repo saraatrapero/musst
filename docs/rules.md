@@ -25,9 +25,8 @@ Mus y **no define** varios elementos esenciales para un motor:
 - número mínimo/máximo de cartas a descartar;
 - si la partida termina en cuanto una pareja llega al tanteo, a mitad de recuento.
 
-Según tu instrucción ("no completes una regla dudosa basándote en conocimiento
-general"), **esos puntos quedan como decisiones pendientes (sección 4)** y no se
-implementarán hasta que las confirmes.
+Esos puntos se resolvieron como decisiones explícitas aprobadas (sección 4); no
+proceden del reglamento y así se indica en el código y en los tests.
 
 ---
 
@@ -87,14 +86,15 @@ implementarán hasta que las confirmes.
 
 ---
 
-## 4. Decisiones pendientes (huecos y ambigüedades)
+## 4. Decisiones adoptadas (huecos y ambigüedades)
 
-Formato: duda → qué dice el reglamento → propuesta. **Ninguna se implementa sin tu
-confirmación.**
+Formato: duda → qué dice el reglamento → decisión. **Todas las propuestas fueron
+aprobadas el 2026-10-03** (incluida D-24a). La columna "Decisión" es normativa
+para el motor.
 
 ### Valores y órdenes no definidos en el reglamento
 
-| ID | Duda | Reglamento | Propuesta |
+| ID | Duda | Reglamento | Decisión |
 |---|---|---|---|
 | D-01 | Valor de cada carta para juego/punto | No lo define | figuras (sota, caballo, rey) y treses = 10; ases y doses = 1; resto, su número |
 | D-02 | Tantos de cada jugada | C.VII-2 dice que pares, juego, punto y grande/chica en paso **tienen valor**, pero no cuánto | pareja 1, medias 2, duples 3; juego 31 = 3, otro juego = 2; punto = 1; grande/chica en paso = 1 |
@@ -106,9 +106,9 @@ confirmación.**
 
 ### Flujo de la jugada
 
-| ID | Duda | Reglamento | Propuesta |
+| ID | Duda | Reglamento | Decisión |
 |---|---|---|---|
-| D-03 | Primer repartidor | C.III-1 describe el sorteo por palo | simular el procedimiento con la semilla (barajador = asiento 0, configurable) o permitir fijarlo por config |
+| D-03 | Primer repartidor | C.III-1 describe el sorteo por palo | simular el procedimiento con la semilla (barajador = asiento 0, configurable); también se puede fijar por config |
 | D-04 | Orden del mus | C.IV-4 permite al 3º cortar "en cualquier momento" | orden estricto mano → 2º → 3º → 4º; un único corte termina el mus |
 | D-05 | Excepción "a falta de tanto" (C.IV-7) | no define "a falta de tanto" | no modelarla (no cambia el resultado en un motor por turnos) |
 | D-06 | Orden en que se **reponen** las cartas tras el descarte | C.III-2: "de una vez a cada jugador y por el mismo orden"; C.III-11: se descarta del que reparte al mano | se declaran los descartes en orden postre → mano (C.III-11) y se sirve en ese mismo orden |
@@ -120,7 +120,7 @@ confirmación.**
 
 ### Apuestas y tanteo
 
-| ID | Duda | Reglamento | Propuesta |
+| ID | Duda | Reglamento | Decisión |
 |---|---|---|---|
 | D-16 | Cuánto vale un revoque no aceptado | Voc. "Negada" (1 tanto la primera apuesta) y "Deje" ("tanto sumado a los ya ganados" en pares, juego, punto); C.VII-2 "tantos de envites revocados y no aceptados" | **grande/chica**: lo ya querido antes del revoque. **pares/juego/punto**: lo ya querido + 1 (el deje). Requiere tu confirmación: es la lectura literal pero no es la práctica habitual en muchas mesas |
 | D-17 | Tras un "no quiero" en pares/juego, ¿quién cobra el valor de las jugadas? | C.VI-7: "ganando el lance sus rivales" | el lance es de la pareja que envidó: cobra la negada/deje y, al final, el valor de **sus** pares/juego |
@@ -147,5 +147,5 @@ el motor rechazara la acción, revelaría información privada del compañero.
 | D-24b | Prohibir sólo el caso que depende de las cartas propias (postre con 33 / dos ases cuyo compañero no tiene la jugada) y no aplicar el resto | respeta "prohibido" de C.VI-9 | la regla depende del compañero ⇒ fuga de información |
 | D-24c | Permitir la acción y aplicar la penalización reglamentaria al resolver | fiel al reglamento, sin fugas | más complejo; textos ambiguos ("postre del lance", "continuará el juego de la manera habitual") |
 
-Propuesta: **D-24a en la primera versión** (documentado como desviación), dejando un
+Decisión: **D-24a en la primera versión** (desviación documentada), dejando un
 punto de extensión para D-24c.

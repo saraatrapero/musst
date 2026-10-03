@@ -1,8 +1,7 @@
 # Diseño del motor de Mus — `mus_engine`
 
-> Estado: **PROPUESTA PARA REVISIÓN**. No hay código del motor todavía.
-> Ningún punto marcado como `[D-xx]` (decisión pendiente, ver `docs/rules.md`) se
-> implementará hasta que se confirme.
+> Estado: **APROBADO** (2026-10-03). Implementación por fases.
+> Las referencias `[D-xx]` remiten a decisiones aprobadas en `docs/rules.md` §4.
 
 ---
 
@@ -11,13 +10,13 @@
 Reglamento de Juego de la FEM: `docs/reglamento/reglamento-fem.pdf`.
 El análisis artículo por artículo está en **`docs/rules.md`**:
 reglas confirmadas (`R-xx`, con cita), temas fuera de alcance y decisiones
-pendientes (`D-xx`). Las referencias `[D-xx]` de este documento remiten allí.
+adoptadas (`D-xx`). Las referencias `[D-xx]` de este documento remiten allí.
 
 Hallazgo principal: el reglamento FEM es de **competición y conducta** y no define
 varios elementos básicos (valores en tantos, valor de las cartas para juego, orden
 completo del juego, desempate por la mano, rotación del reparto, límites del
-descarte). Esos puntos están aislados en `GameConfig`/`RankingPolicy` y **no se
-implementarán hasta que se confirmen**.
+descarte). Esos puntos se resolvieron como decisiones aprobadas y están aislados en
+`GameConfig`/`RankingPolicy`.
 
 ---
 
@@ -457,10 +456,10 @@ musst/
 │   ├── architecture.md · state-machine.md · scoring.md · testing.md · api.md
 ├── src/mus_engine/
 │   ├── __init__.py           # API pública: Game, GameConfig, acciones, Observation…
-│   ├── config.py             # GameConfig, RankingPolicy
+│   ├── config.py             # GameConfig
 │   ├── errors.py             # jerarquía de excepciones
 │   ├── rng.py                # RNG determinista serializable
-│   ├── cards/   card.py · deck.py
+│   ├── cards/   card.py · deck.py · ranking.py (RankingPolicy)
 │   ├── players/ player.py · team.py · seating.py
 │   ├── rules/   lance.py (LanceType, protocolo Evaluator) · grande.py · chica.py
 │   │            pares.py · juego.py · punto.py · mus.py (reparto, descartes)
