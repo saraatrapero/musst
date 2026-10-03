@@ -116,6 +116,25 @@ Implementado en `rules/grande.py`, `rules/chica.py` y `rules/evaluation.py`.
 Tests: `tests/rules/test_fem_grande_chica.py`; propiedades frente a una implementación
 de referencia independiente en `tests/property/test_grande_chica_properties.py`.
 
+### Pares (fase 6)
+
+Implementado en `rules/pares.py` y `rules/participation.py`.
+
+- **Clasificación** por rangos efectivos (C.II-3): sin pares, pareja, medias, duples
+  (R-18). Cuatro iguales = duples con los dos pares del mismo rango (R-17, D-12).
+- **Fuerza**: `(categoría, rangos)`: pareja → rango del par; medias → rango del trío;
+  duples → par mayor y par menor (D-11). Los naipes sueltos no cuentan; si la fuerza
+  coincide, decide la mano (D-09).
+- Extremos comprobados sobre las 91 390 manos: máxima = cuatro reyes (C.VI-7), mínima con
+  pares = dos ases (C.VI-8).
+- **Valor** (D-02): `pares_points(categoría, config)` → 1 / 2 / 3.
+- **Participación** (R-19, D-20): `Participation.from_holders(jugadores_con_pares, mano)`
+  da el orden de habla, la mano del lance (Voc. "Mano") y si el lance tiene envites (las
+  dos parejas), lo cobra una sola pareja o no se juega. Se reutilizará para juego.
+
+Tests: `tests/rules/test_fem_pares.py`, `tests/unit/test_pares.py`,
+`tests/unit/test_participation.py`, `tests/property/test_pares_properties.py`.
+
 ---
 
 ## 3. Fuera de alcance del motor (y por qué)

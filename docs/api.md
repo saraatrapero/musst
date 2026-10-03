@@ -229,3 +229,25 @@ result.decided_by_mano               # True si el empate lo resolvió la mano (D
 - `strength()` exige exactamente 4 naipes distintos (`InvalidCardError`).
 - `resolve(evaluator, hands, mano)` sirve para cualquier lance y para cualquier subconjunto
   de jugadores (en pares y juego sólo participan quienes los tienen).
+
+## Fase 6 — Pares
+
+```python
+from mus_engine import GameConfig, ParesCategory, ParesEvaluator
+from mus_engine.rules import Participation, pares_points
+
+pares = ParesEvaluator()
+hand = pares.classify(cards)          # ParesHand(category, ranks)
+hand.category                         # ParesCategory.NONE / PAREJA / MEDIAS / DUPLES
+hand.ranks                            # (par,) / (trío,) / (par mayor, par menor)
+pares.has_pares(cards)
+pares.strength(cards)                 # (categoría, rangos...): mayor es mejor
+pares_points(hand.category, GameConfig())   # 0, 1, 2 o 3 (D-02)
+
+p = Participation.from_holders(players_with_pares, mano)
+p.players          # en orden de habla desde la mano
+p.lance_mano       # primero que tiene pares (Voc. "Mano")
+p.is_contested     # las dos parejas tienen pares -> hay envites
+p.single_team      # sólo una pareja -> cobra sin envites (D-20)
+p.is_void          # nadie tiene pares -> no se juega el lance
+```
