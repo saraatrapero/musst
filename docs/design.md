@@ -1,6 +1,7 @@
 # Diseño del motor de Mus — `mus_engine`
 
-> Estado: **APROBADO** (2026-10-03). Implementación por fases.
+> Estado: **APROBADO E IMPLEMENTADO** (2026-10-03). La arquitectura final y sus
+> diferencias con este diseño están en `docs/architecture.md`.
 > Las referencias `[D-xx]` remiten a decisiones aprobadas en `docs/rules.md` §4.
 
 ---

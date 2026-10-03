@@ -1,7 +1,48 @@
 # API pública
 
-Todo lo que se documenta aquí se importa desde `mus_engine`. El resto de módulos
-son internos y pueden cambiar.
+Todo lo que se documenta aquí se importa desde `mus_engine`. El resto de módulos son
+internos y pueden cambiar.
+
+## Inicio rápido: una partida completa
+
+```python
+from mus_engine import CutMusAction, Game, GameConfig, GameReplay
+
+game = Game(players=("Ana", "Bea", "Carlos", "Dani"),
+            config=GameConfig(target_score=40, games_to_win=1),
+            seed=12345)
+game.start()
+
+while not game.is_finished:
+    (player,) = game.current_actors()
+    observation = game.get_observation(player)   # lo único que un bot debe mirar
+    legal = observation.legal_actions             # == game.get_legal_actions(player)
+    # Aquí decide el jugador o el bot. Política de ejemplo: cortar el mus y, después,
+    # la primera acción legal (pasar). Ojo: pedir mus siempre no termina nunca, porque
+    # el reglamento no limita las rondas de mus (D-14).
+    cut = CutMusAction()
+    action = cut if legal.contains(cut) else next(iter(legal))
+    game.apply_action(player, action)             # el motor valida y aplica
+
+game.winner, game.get_state().score
+replay = GameReplay.from_game(game)               # o GameReplay.from_events(game.event_log)
+```
+
+| Concepto | Clase |
+|---|---|
+| Partida | `Game` |
+| Configuración | `GameConfig` |
+| Jugador / pareja / mesa | `Player`, `Team`, `Table`, `TeamId`, `SeatId` |
+| Naipes | `Card`, `Rank`, `Suit`, `Deck` |
+| Acciones | `Action` y subclases |
+| Eventos | `EventEnvelope`, `Visibility` (`mus_engine.events`) |
+| Estado completo | `GameState`, `HandState` |
+| Observación | `Observation` |
+| Lance | `LanceType`, evaluadores, `resolve` |
+| Puntuación | `ScoringEngine`, `GameScore` |
+| Reglas sin estado | `RulesEngine` |
+| Replay | `GameRecord`, `GameReplay` |
+
 
 ## Fase 1 — Cartas, baraja y configuración
 
@@ -300,3 +341,29 @@ la partida. Detalle del tanteo en `docs/scoring.md`.
 
 Puntuación programática: `ScoringEngine(config)` con `end_of_hand_entries(...)`,
 `apply(score, entries)` y `ordago_entry(...)`; `rejection_points(bet, config)`.
+
+## Observaciones, registro y replay
+
+```python
+obs = game.get_observation(player)
+obs.my_hand, obs.phase, obs.lance, obs.score, obs.mano, obs.dealer
+obs.to_act, obs.is_my_turn, obs.legal_actions
+obs.bet                      # PublicBetView del envite en curso
+obs.mus_requested, obs.mus_cut_by, obs.discard_counts
+obs.pares_holders, obs.juego_holders, obs.outcomes
+obs.revealed_hands           # sólo tras enseñarse (final de jugada u órdago)
+obs.events                   # públicos + privados propios
+
+game.get_hand(player, viewer)    # PrivateInformationError si no puede verlos
+
+record = game.record             # GameRecord(player_names, config, seed, actions)
+GameRecord.from_events(game.event_log)   # reconstrucción desde los eventos
+
+replay = GameReplay(record)      # o .from_game(game) / .from_events(log)
+replay.next(); replay.previous(); replay.jump_to(10)
+replay.state, replay.position, replay.last_action
+replay.events(viewer), replay.observation(viewer)
+
+RulesEngine.legal_actions(state, player)
+RulesEngine.apply(state, player, action)  # -> (nuevo estado, eventos); no toca ninguna partida
+```

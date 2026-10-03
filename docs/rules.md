@@ -225,7 +225,7 @@ para el motor.
 | D-06 | Orden en que se **reponen** las cartas tras el descarte | C.III-2: "de una vez a cada jugador y por el mismo orden"; C.III-11: se descarta del que reparte al mano | se declaran los descartes en orden postre → mano (C.III-11) y se sirve en ese mismo orden |
 | D-07 | Mazo agotado | C.III-15: se recoge "todo el descarte" | literal: se rebaraja toda la pila de descartes, incluidas las cartas descartadas en esa misma ronda |
 | D-13 | Mínimo y máximo de cartas a descartar | No lo define | mínimo 1, máximo 4 |
-| D-14 | Número de rondas de mus | No hay límite | sin límite |
+| D-14 | Número de rondas de mus | No hay límite | sin límite. Consecuencia: si los cuatro piden mus siempre, la jugada no termina; un límite (o un tiempo, C.V) corresponde a la aplicación, no al motor |
 | D-15 | Rotación del reparto | No lo define | reparte el siguiente jugador en el orden de juego (el mano de esta jugada reparte la siguiente) |
 | D-20 | Pares/juego de una sola pareja | No lo define explícitamente | si sólo una pareja tiene pares (o juego) no hay envites y cobra al final; si nadie tiene juego se juega punto |
 
