@@ -1,30 +1,23 @@
 # Diseño del motor de Mus — `mus_engine`
 
 > Estado: **PROPUESTA PARA REVISIÓN**. No hay código del motor todavía.
-> Ningún punto marcado como `[VERIFICAR-FEM]` debe implementarse hasta contrastarlo
-> con el texto del Reglamento de Juego de la FEM.
+> Ningún punto marcado como `[D-xx]` (decisión pendiente, ver `docs/rules.md`) se
+> implementará hasta que se confirme.
 
 ---
 
-## 0. Aviso previo sobre la fuente de verdad
+## 0. Fuente de verdad
 
-El Reglamento FEM **no está en el repositorio** ni adjunto a la petición, y el entorno
-no puede descargarlo (la política de red bloquea `lafederaciondemus.es`). Por tanto:
+Reglamento de Juego de la FEM: `docs/reglamento/reglamento-fem.pdf`.
+El análisis artículo por artículo está en **`docs/rules.md`**:
+reglas confirmadas (`R-xx`, con cita), temas fuera de alcance y decisiones
+pendientes (`D-xx`). Las referencias `[D-xx]` de este documento remiten allí.
 
-- Todo lo que sigue que dependa de una regla concreta se apoya en el Mus de
-  ocho reyes **tal y como se juega habitualmente en España**, y está marcado como
-  `[VERIFICAR-FEM]` con un identificador (`A-xx`) en la sección 10.
-- La arquitectura (secciones 1–9, 11, 12) es **independiente** de esas reglas: cada
-  regla dudosa queda aislada en un evaluador o en un campo de `GameConfig`, de modo que
-  corregirla no exige reescribir el motor.
-- Propuesta: añadir el PDF al repo como `docs/reglamento/reglamento-fem.pdf` y, al
-  implementar cada fase, citar el artículo concreto en `docs/rules.md` y en el
-  docstring del test correspondiente.
-
-Hay además una ambigüedad previa: existen al menos dos documentos que se
-presentan como reglamento federativo (FEM y la *Federación Española de Asociaciones
-de Jugadores de Mus*, v.7 de 16-02-2025). Hay que confirmar **cuál** y **qué versión**
-es la fuente de verdad (`A-00`).
+Hallazgo principal: el reglamento FEM es de **competición y conducta** y no define
+varios elementos básicos (valores en tantos, valor de las cartas para juego, orden
+completo del juego, desempate por la mano, rotación del reparto, límites del
+descarte). Esos puntos están aislados en `GameConfig`/`RankingPolicy` y **no se
+implementarán hasta que se confirmen**.
 
 ---
 
@@ -225,13 +218,14 @@ class BetState:
 ```
 
 El deje de un "no quiero" es **una regla, no un caso**:
-`deje = accepted_amount if accepted_amount > 0 else 1` `[VERIFICAR-FEM A-14]`.
+`rejection_value(bet, lance)`: primera apuesta ⇒ negada = 1 (Voc. "Negada");
+revoque ⇒ lo ya querido, + 1 de deje en pares/juego/punto (C.VII-1) `[D-16]`.
 No hay cientos de `if`: un envite es "subir `pending_amount`, invertir el equipo
 proponente, rehacer la cola `to_act` con los rivales elegibles en orden desde la
 mano". Un reenvite implica querer lo anterior: fija
 `accepted_amount = pending_amount` anterior antes de subir. Aceptar fija
 `accepted_amount = pending_amount`. Rechazar requiere que
-todos los rivales elegibles de la cola rechacen `[VERIFICAR-FEM A-12]`.
+todos los rivales elegibles de la cola rechacen (C.VI-4: "valdrá el quiero").
 
 ### 2.6 Puntuación (`scoring/`)
 
@@ -246,7 +240,7 @@ Tres niveles estrictamente separados:
 
 `ScoringEngine.apply(game_score, hand_score) -> (GameScore, winner | None, entries_applied)`
 anota entrada a entrada **en orden reglamentario** y se detiene en cuanto una
-pareja alcanza `target_score` (`[VERIFICAR-FEM A-20]`). Amarracos son una vista:
+pareja alcanza `target_score` (`[D-22]`). Amarracos son una vista:
 `amarracos = tantos // 5`, `sueltos = tantos % 5` (`tantos_per_amarraco` en config).
 
 ### 2.7 Configuración
@@ -259,10 +253,10 @@ class GameConfig:
     kings_are_threes: bool = True
     aces_are_twos: bool = True
     cards_per_hand: int = 4
-    min_discard: int = 1                 # [VERIFICAR-FEM A-06]
+    min_discard: int = 1                 # [D-13]
     max_discard: int = 4
-    min_bet: int = 2                     # "envido" = 2  [VERIFICAR-FEM A-11]
-    min_raise: int = 2                   # [VERIFICAR-FEM A-11]
+    min_bet: int = 2                     # Voc. "Envido" = 2  [D-18]
+    min_raise: int = 2                   # [D-18]
     points_pareja: int = 1
     points_medias: int = 2
     points_duples: int = 3
@@ -271,7 +265,8 @@ class GameConfig:
     points_punto: int = 1
     points_passed_lance: int = 1         # grande/chica/punto "en paso"
     tantos_per_amarraco: int = 5
-    real_31_beats_31: bool = False       # [VERIFICAR-FEM A-17] "31 real"
+    games_to_win: int = 1                # Intro-E: partida a N juegos (capa Match)
+    first_shuffler: SeatId = 0           # C.III-1 sorteo del primer reparto [D-03]
     initial_dealer: SeatId | None = None # None = sorteo con la semilla
     debug_invariants: bool = True
 ```
@@ -311,7 +306,7 @@ Tabla de fases de decisión:
 | Fase | Quién actúa | Acciones legales | Evento(s) | Transición |
 |---|---|---|---|---|
 | `MUS_DECISION` | `mus.speaker` (empezando por la mano) | `MusAction`, `CutMusAction` | `MusRequested` / `MusCut` | siguiente orador; 4 mus → `DISCARD`; corte → `LANCE(GRANDE)` |
-| `DISCARD` | cualquier asiento en `pending_discards` `[A-07]` | `DiscardAction(cards)` | `DiscardDeclared` (público: nº) | cuando todos: `[REDEAL]` → `CardsDiscarded`+`CardsDealt` → `MUS_DECISION` |
+| `DISCARD` | `mus.speaker`, en orden postre → mano (C.III-11) | `DiscardAction(cards)` | `DiscardDeclared` (público: nº) | cuando todos: `[REDEAL]` → `CardsDiscarded`+`CardsDealt` → `MUS_DECISION` |
 | `LANCE(x)` estado `OPEN` | `bet.to_act[0]` | `PassAction`, `BetAction(n)`, `OrdagoAction` | `Passed`, `BetPlaced`, `OrdagoDeclared` | último paso → `ALL_PASSED` → siguiente lance |
 | `LANCE(x)` estado `PENDING` | `bet.to_act[0]` (rival) | `AcceptAction`, `RejectAction`, `RaiseAction(n)`, `OrdagoAction` (si no es ya órdago) | `BetAccepted`, `BetRejected`, `BetRaised`, `OrdagoDeclared` | aceptar → siguiente lance (u `ORDAGO_SHOWDOWN`); rechazos completos → deje → siguiente lance |
 | `GAME_OVER` | nadie | ninguna | — | — (`GameFinishedError`) |
@@ -339,22 +334,23 @@ quién habló último ni por quién cortó.
 ## 4. Flujo completo de una partida (ejemplo)
 
 1. `Game(players=…, config=GameConfig(), seed=123)` → `NOT_STARTED`.
-2. `start()` → sorteo de repartidor con la semilla `[A-03]`, `GameStarted`,
-   barajado, reparto 4×4 desde la mano, una a una `[A-04]` → `CardsDealt`
+2. `start()` → sorteo del primer reparto por palo (C.III-1) con la semilla `[D-03]`, `GameStarted`,
+   barajado, reparto 4×4 desde la mano, una a una (C.III-2) → `CardsDealt`
    (privado por jugador; público: "4 cartas a cada uno") → `MUS_DECISION`, habla la mano.
 3. Mano: `MusAction` · J1: `MusAction` · J2: `MusAction` · J3: `MusAction` → `DISCARD`.
-4. Los 4 envían `DiscardAction` (1–4 cartas propias) → el motor retira, repone del
-   mazo en orden desde la mano (rebarajando descartes si se agota `[A-08]`) → `MUS_DECISION`.
+4. Del postre al mano (C.III-11) cada uno envía `DiscardAction` (1–4 cartas `[D-13]`);
+   el motor sirve de una vez a cada jugador (C.III-2, orden `[D-06]`), rebarajando
+   todo el descarte si se agota el mazo (C.III-15, `[D-07]`) → `MUS_DECISION`.
 5. Mano: `CutMusAction` → `MusCut` → `LANCE(GRANDE)`.
 6. Grande (mano = J0; parejas A = {J0, J2}, B = {J1, J3}): J0 `PassAction`,
    J1 `BetAction(2)`, J2 `RaiseAction(3)` (total 5), J1 `RejectAction`,
    J3 `RejectAction` → `BetRejected`; la pareja A cobra el deje = 2 (lo ya querido)
-   → `PointsAwarded` (cuándo se anota: `[A-19]`).
+   → `PointsAwarded` (se anota en el lance: C.VII-2; deje `[D-16]`).
 7. Chica: todos pasan → `ALL_PASSED`; 1 tanto al ganador de chica al final.
 8. Pares: `PairsDeclared` público (sí/no por jugador). Si sólo un equipo tiene →
    sin envite, cobra al final. Si ambos → `LANCE(PARES)` sólo entre los que tienen.
 9. Juego: `JuegoDeclared`. Si nadie → `LANCE(PUNTO)`.
-10. `HAND_SCORING`: se muestran las manos necesarias `[A-21]`, se evalúa cada lance
+10. `HAND_SCORING`: se muestran las cuatro manos (C.VII-9), se evalúa cada lance
     en orden Grande → Chica → Pares → Juego/Punto, `LanceResolved` + `PointsAwarded`.
 11. `CHECK_GAME_END`: si una pareja llega a 40 → `GameFinished`; si no →
     `NEW_HAND`: el repartidor pasa al siguiente asiento → paso 2.
@@ -386,7 +382,7 @@ Decisiones:
   `.as_list(limit)` y `.contains(action)`. `DiscardAction` igual: se exponen las
   combinaciones (máx. 15 por jugador: C(4,1)+…+C(4,4)), pequeño y enumerable.
 - No existe acción para declarar pares/juego: la declaración la hace el motor
-  (no se puede mentir) `[A-15]`.
+  (no se puede mentir; C.VI-17, C.IX-1).
 
 ## 6. Eventos (`events/`)
 
@@ -440,7 +436,7 @@ Garantías:
 - Se construye desde cero filtrando por visibilidad: sólo `Public` y
   `PrivateTo(self.seat)`. Nunca se copia `GameState` y se "borra" lo secreto
   (whitelist, no blacklist).
-- No incluye: manos ajenas no reveladas, mazo, pila de descartes, semilla, contador
+- No incluye: manos ajenas no reveladas, mazo **ni su tamaño** (C.III-16), pila de descartes, semilla, contador
   RNG, descartes ajenos (sólo el número).
 - Inmutable: tuplas, frozen dataclasses, `MappingProxyType`. `observation.my_hand.append`
   → `AttributeError`.
@@ -499,8 +495,8 @@ Calidad: `ruff check`, `ruff format --check`, `mypy --strict`, cobertura ≥ 95 
 
 **Invariantes** (`game/invariants.py`, tras cada transición si `debug_invariants`):
 manos + mazo + descartes = 40 cartas exactas sin duplicados; cada mano tiene 4
-cartas fuera de `DISCARD`; ninguna carta descartada en la ronda en curso vuelve a
-la mano de quien la descartó `[A-08]`; marcador nunca disminuye; nadie supera
+cartas fuera de `DISCARD`; una carta descartada sólo vuelve al juego a través de
+un rebarajado del descarte (C.III-15); marcador nunca disminuye; nadie supera
 `target_score` sin que la partida haya terminado; ganador ⇔ `GAME_OVER`;
 `turn ∈ actores de la fase`; `0 ≤ accepted_amount ≤ pending_amount`;
 `proposing_team ≠ team(to_act[0])` en `PENDING`. Fallo → `InvariantViolationError`
@@ -525,45 +521,12 @@ MusEngineError
 
 Todas llevan `phase`, `seat` y `action` en el mensaje.
 
-## 10. Ambigüedades a confirmar contra el Reglamento FEM
+## 10. Ambigüedades del reglamento
 
-Cada una se convertirá en una decisión documentada en `docs/rules.md` + un test.
-"Propuesta" = lo que implementaré si el reglamento no dice otra cosa explícita
-(**no lo implementaré sin confirmarlo**).
-
-| ID | Tema | Duda | Propuesta |
-|---|---|---|---|
-| A-00 | Fuente | ¿FEM o Federación de Asociaciones (v.7 2025)? ¿qué versión? | la que adjuntes |
-| A-01 | Partida | ¿El motor juega un "juego" (vaca) a 40 o una partida a N juegos? | `Game` = un juego a 40; `Match` (N juegos) como capa posterior |
-| A-02 | Asientos | sentido de juego (antihorario) y numeración | asiento `i+1` habla después de `i` |
-| A-03 | Primer repartidor | ¿sorteo? ¿por carta? | sorteo con la semilla |
-| A-04 | Reparto | ¿una a una o de golpe? ¿quién corta la baraja? | una a una desde la mano; corte no modelado (no altera la aleatoriedad) |
-| A-05 | Mus | ¿basta un "no hay mus" para cortar? ¿se puede pedir mus tras cortar? | primer corte termina el mus; orden desde la mano |
-| A-06 | Descarte | mínimo 1 y máximo 4 cartas | 1–4 |
-| A-07 | Descarte | ¿simultáneo o en orden? ¿se ve cuántas pide cada uno? | se aceptan en cualquier orden; nº público; reposición en orden desde la mano |
-| A-08 | Mazo agotado | ¿se rebarajan los descartes? ¿incluidos los de la ronda en curso? ¿la última carta del mazo se reparte? | rebarajar descartes de rondas anteriores; los de la ronda en curso no vuelven |
-| A-09 | Límite de mus | ¿hay número máximo de rondas de mus? | sin límite |
-| A-10 | Orden de habla | en pares/juego, ¿sólo hablan los que tienen? | sí, desde la mano |
-| A-11 | Importes | envite mínimo 2; ¿reenvite mínimo? ¿máximo? | envite ≥2, "N más" ≥2 `[confirmar]`, sin máximo salvo órdago |
-| A-12 | Respuesta | ante un envite, ¿responde la pareja (uno basta para querer) y hacen falta los dos "no quiero"? | quiere uno cualquiera; no quiero requiere a ambos rivales elegibles en orden |
-| A-13 | Paso tras envite | ¿un jugador que pasó puede luego querer/reenvidar? | sí, si es rival del envite |
-| A-14 | Deje | "no quiero" al primer envite = 1; a un reenvite = lo querido previamente | `max(1, accepted_amount)` |
-| A-15 | Declaración | ¿la declaración de pares/juego es obligatoria y veraz? | automática por el motor |
-| A-16 | Pares | valores 1/2/3; desempates dentro de categoría; cuatro iguales = duples; ¿duples comparan pareja mayor y luego menor? | sí a todo |
-| A-17 | Juego | orden 31 > 32 > 40 > 37 > 36 > 35 > 34 > 33; ¿existe "31 real" (7-7-7-sota)? | orden indicado; sin 31 real |
-| A-18 | Punto | valor 1; si se quiere envite, ¿envite + 1? | ganador: envite (o 1 en paso) + 1 |
-| A-19 | Momento de anotar | ¿los tantos de "no quiero" se anotan al momento o al final de la mano? ¿puede acabar la partida por un deje a mitad de mano? | se anotan al momento y pueden terminar la partida |
-| A-20 | Fin de partida | al contar, ¿gana el primero que llega a 40 en el orden grande→chica→pares→juego, aunque el otro también llegase? | sí, se detiene el recuento al alcanzar 40 |
-| A-21 | Mostrar cartas | ¿qué manos se muestran y cuándo? ¿y si todo fue "no quiero"? | se muestran las manos de los jugadores cuyo lance se resuelve por cartas |
-| A-22 | Pares/juego tras "no quiero" | el proponente cobra el deje; ¿cobra además sus pares/juego? ¿y si el rival tenía mejores? | el ganador del lance (el proponente) cobra sus propios pares/juego |
-| A-23 | Grande/Chica en paso | 1 tanto al ganador | sí |
-| A-24 | Órdago | ¿se puede órdago en cualquier lance y como respuesta? ¿aceptado ⇒ se muestran cartas y gana el juego entero? ¿los lances anteriores ya resueltos cuentan? | cualquier lance; aceptado ⇒ resolución inmediata, el ganador gana el juego; lo demás no se cuenta |
-| A-25 | Pares de un solo equipo | si sólo una pareja tiene pares/juego, ¿se habla? ¿cobra automáticamente? | no se habla; cobra al final |
-| A-26 | Señas | permitidas por reglamento; no afectan al motor | fuera de alcance (comunicación entre humanos/bots) |
-| A-27 | Irregularidades | carta vista, reparto erróneo, hablar fuera de turno: penalizaciones | imposibles por construcción → el motor rechaza la acción (no se modelan penalizaciones) |
-| A-28 | Ocho reyes | 3 = rey y 2 = as para todo: grande, chica, pares y juego (3 vale 10, 2 vale 1) | sí |
-| A-29 | Punto vs Juego | si alguien tiene juego, ¿se juega juego y no punto? | sí |
-| A-30 | 40 exactos | ¿se gana con ≥40 o exactamente 40? | ≥40 |
+Ver `docs/rules.md` §4 (D-01 … D-24). Resumen de lo que más afecta al diseño:
+D-02 (valores en tantos), D-08/D-09 (orden del juego y desempates), D-16 (negada y
+deje), D-22 (fin del juego a mitad de jugada) y D-24 (penalizaciones del postre con
+jugada mínima).
 
 ## 11. Decisiones de diseño
 
@@ -598,7 +561,7 @@ revisión, y un commit. No se pasa a la siguiente sin tu visto bueno.
 | 2 | `Player`, `Team`, `seating` | orden, pareja, mano, postre, rotación |
 | 3 | `GameState`, `Phase`, `Game` esqueleto, invariantes | estado inicial, errores de fase |
 | 4 | Reparto y mano | reparto determinista, rotación de mano |
-| 5 | Mus, descartes, re-reparto, mazo agotado | flujo de mus, ilegales, A-05..A-09 |
+| 5 | Mus, descartes, re-reparto, mazo agotado | flujo de mus, ilegales, D-04..D-07, D-13, D-14 |
 | 6–9 | Evaluadores Grande, Chica, Pares, Juego/Punto | tablas exhaustivas, empates, mano |
 | 10 | `BetState` y lances con envites | paso, envite, reenvite, deje |
 | 11 | Órdago | aceptado/rechazado, fin de partida |
