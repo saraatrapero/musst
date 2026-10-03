@@ -85,7 +85,7 @@ def redeal(state: GameState) -> Step:
     served = serve_discards(hand.hands, hand.stock, hand.discard_pile, discards, order, state.rng)
     emitted: list[Emission] = []
     for deck in served.reshuffles:
-        emitted.append(Emission.public(DiscardPileReshuffled(len(deck))))
+        emitted.append(Emission.public(DiscardPileReshuffled()))
         emitted.append(Emission.engine(DeckShuffled(deck.cards)))
     for player in order:
         emitted.append(

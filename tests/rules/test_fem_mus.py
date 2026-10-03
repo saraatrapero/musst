@@ -79,8 +79,8 @@ def test_c_iii_15_se_rebaraja_todo_el_descarte() -> None:
     log = game.event_log
     reshuffled = [e.event for e in log if isinstance(e.event, DiscardPileReshuffled)]
     assert len(reshuffled) == 1
-    assert reshuffled[0].cards == 16 + 16
     new_deck = [e.event for e in log if isinstance(e.event, DeckShuffled)][-1]
+    assert len(new_deck.order) == 16 + 16
     assert set(new_deck.order) == old_pile | {c for h in this_round for c in h}
 
 

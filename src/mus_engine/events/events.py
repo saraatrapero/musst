@@ -117,9 +117,11 @@ class CardsDiscarded(Event):
 
 @dataclass(frozen=True, slots=True)
 class DiscardPileReshuffled(Event):
-    """Público: se acabó el mazo y se ha barajado el descarte (C.III-15)."""
+    """Público: se acabó el mazo y se ha barajado el descarte (C.III-15).
 
-    cards: int
+    No indica cuántos naipes forman el nuevo mazo: el reglamento prohíbe contar el
+    mazo (C.III-16). El orden y el tamaño sólo constan en ``DeckShuffled`` (motor).
+    """
 
 
 @dataclass(frozen=True, slots=True)

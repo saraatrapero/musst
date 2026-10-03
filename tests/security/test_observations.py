@@ -147,3 +147,12 @@ def test_observations_never_leak_during_random_games(seed: int, choices: int, st
     play_seeded(game, choices, steps)
     for seat in ALL_SEATS:
         assert cards_in(game.get_observation(seat)) <= cards_known(game, seat)
+
+
+def test_reshuffle_event_does_not_reveal_deck_size() -> None:
+    """C.III-16 / R-13: el evento público de rebarajado no dice cuántos naipes hay."""
+    import dataclasses as dc
+
+    from mus_engine.events import DiscardPileReshuffled
+
+    assert dc.fields(DiscardPileReshuffled) == ()

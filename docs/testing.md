@@ -31,7 +31,7 @@ python -m pytest --cov=mus_engine --cov-report=term-missing
 - `mypy --strict` también sobre los tests.
 - Cobertura objetivo: 100 % en `cards/`, `rules/`, `betting/`, `scoring/`.
 - Tests acumulados: fase 1: 114; fase 2: 183; fase 3: 290; fase 4: 347; fase 5: 401;
-  fase 6: 455; fase 7: 504; fases 8–10: 639; final: 673. Cobertura 100 %.
+  fase 6: 455; fase 7: 504; fases 8–10: 639; final: 674. Cobertura 100 %.
 
 ## Utilidades
 

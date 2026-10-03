@@ -23,7 +23,7 @@ Motor completo: todas las fases del plan están implementadas y probadas.
 | Tanteo | orden reglamentario, final de juego a mitad de jugada, partida a N juegos |
 | Información privada | observaciones por lista blanca, eventos con visibilidad |
 | Replay | registro reconstruible desde los eventos, navegación por estados |
-| Calidad | 673 tests (unitarios, reglas, integración, seguridad, propiedades, regresión), cobertura 100 %, ruff y mypy estricto |
+| Calidad | 674 tests (unitarios, reglas, integración, seguridad, propiedades, regresión), cobertura 100 %, ruff y mypy estricto |
 
 Desviación conocida respecto al reglamento: no se modelan las penalizaciones del
 postre que acepta un órdago con la jugada mínima (D-24a, `docs/rules.md`).
