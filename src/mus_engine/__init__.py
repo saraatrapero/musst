@@ -57,10 +57,12 @@ from mus_engine.rng import Rng
 from mus_engine.rules import (
     ChicaEvaluator,
     GrandeEvaluator,
+    JuegoEvaluator,
     LanceResult,
     LanceType,
     ParesCategory,
     ParesEvaluator,
+    PuntoEvaluator,
     resolve,
 )
 from mus_engine.scoring import GameScore
@@ -94,6 +96,7 @@ __all__ = [
     "InvalidPlayerError",
     "InvalidStateError",
     "InvariantViolationError",
+    "JuegoEvaluator",
     "LanceResult",
     "LanceType",
     "LegalActions",
@@ -107,6 +110,7 @@ __all__ = [
     "Phase",
     "Player",
     "PrivateInformationError",
+    "PuntoEvaluator",
     "RaiseAction",
     "Rank",
     "RankingPolicy",

@@ -19,7 +19,8 @@ MUS.ST: no incluye interfaz, usuarios ni IA.
 | 4 | mus y descartes: orden de habla, corte, descartes, reposición, rebarajado del descarte | ✅ |
 | 5 | evaluadores de grande y chica, resolución de empates por la mano | ✅ |
 | 6 | pares: categorías, comparación, valor y participación en el lance | ✅ |
-| 7+ | juego/punto, envites, órdago, tanteo, observaciones, replay | pendiente |
+| 7 | juego y punto: totales, orden, valor y elección del lance | ✅ |
+| 8+ | envites, órdago, tanteo y final, observaciones, replay | pendiente |
 
 ## Instalación
 

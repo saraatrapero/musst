@@ -135,6 +135,25 @@ Implementado en `rules/pares.py` y `rules/participation.py`.
 Tests: `tests/rules/test_fem_pares.py`, `tests/unit/test_pares.py`,
 `tests/unit/test_participation.py`, `tests/property/test_pares_properties.py`.
 
+### Juego y punto (fase 7)
+
+Implementado en `rules/juego.py` y `rules/punto.py`.
+
+- **Total** con el valor de D-01 (figuras y treses 10, ases y doses 1). Se separan
+  *tener juego* (`JuegoHand.has_juego`, total ≥ 31, Voc. "No Juego") y *qué juego*
+  (`JuegoHand.total` y su posición en `JUEGO_ORDER`).
+- **Orden del juego** (D-08): 31, 32, 40, 37, 36, 35, 34, 33. Extremos del reglamento
+  verificados sobre todas las manos: máxima 31 (C.VI-7), mínima 33 (C.VI-8).
+  Juegos posibles: 31–37 y 40; **38 y 39 no existen** con la baraja española.
+- No hay "31 real": 7-7-7-sota es un 31 como cualquier otro (no figura en el reglamento).
+- **Punto**: gana el total mayor; máxima 30 (C.VI-7). `PuntoEvaluator` rechaza jugadas con
+  juego, porque nunca pueden ir a punto.
+- **Lance**: `juego_or_punto(manos)` → juego si alguien lo tiene; si no, punto (D-20).
+- **Valor** (D-02): `juego_points` → 3 con 31, 2 con otro juego; `punto_points` → 1.
+
+Tests: `tests/rules/test_fem_juego_punto.py`, `tests/unit/test_juego_punto.py`,
+`tests/property/test_juego_punto_properties.py`.
+
 ---
 
 ## 3. Fuera de alcance del motor (y por qué)
@@ -162,7 +181,7 @@ para el motor.
 |---|---|---|---|
 | D-01 | Valor de cada carta para juego/punto | No lo define | figuras (sota, caballo, rey) y treses = 10; ases y doses = 1; resto, su número |
 | D-02 | Tantos de cada jugada | C.VII-2 dice que pares, juego, punto y grande/chica en paso **tienen valor**, pero no cuánto | pareja 1, medias 2, duples 3; juego 31 = 3, otro juego = 2; punto = 1; grande/chica en paso = 1 |
-| D-08 | Orden del juego | Sólo 31 máxima y 33 mínima (C.VI-8, C.VI-9) | 31 > 32 > 40 > 39 > 38 > 37 > 36 > 35 > 34 > 33 |
+| D-08 | Orden del juego | Sólo 31 máxima y 33 mínima (C.VI-8, C.VI-9) | 31 > 32 > 40 > 39 > 38 > 37 > 36 > 35 > 34 > 33 (38 y 39 no pueden darse con la baraja española: verificado sobre todas las manos) |
 | D-09 | Desempates | No hay regla explícita; C.VI-7 y C.VI-8 lo presuponen (mano con jugada máxima, postre con jugada mínima) | empate en cualquier lance ⇒ gana el jugador más cercano a la mano |
 | D-10 | Comparación en grande/chica | C.VI-16: los naipes se cantan de mayor a menor (grande) y de menor a mayor (chica) | comparar carta a carta en ese orden; sólo cuentan los rangos efectivos (palos irrelevantes) |
 | D-11 | Comparación dentro de pares | No la define | por categoría; dentro: rango del trío/par; duples: par mayor y luego par menor |

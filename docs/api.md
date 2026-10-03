@@ -251,3 +251,23 @@ p.is_contested     # las dos parejas tienen pares -> hay envites
 p.single_team      # sólo una pareja -> cobra sin envites (D-20)
 p.is_void          # nadie tiene pares -> no se juega el lance
 ```
+
+## Fase 7 — Juego y punto
+
+```python
+from mus_engine import GameConfig, JuegoEvaluator, PuntoEvaluator
+from mus_engine.rules import JUEGO_ORDER, juego_or_punto, juego_points, punto_points
+
+juego = JuegoEvaluator()
+hand = juego.classify(cards)       # JuegoHand(total)
+hand.has_juego                     # total >= 31
+hand.total                         # 4..40
+hand.juego_rank                    # 0 (31, la mejor) .. 9 (33), None sin juego
+juego.strength(cards)              # (10,) para 31 ... (1,) para 33; (0,) sin juego
+juego_points(hand, GameConfig())   # 3 / 2 / 0
+
+PuntoEvaluator().strength(cards)   # (total,), sólo para jugadas sin juego
+punto_points(GameConfig())         # 1
+
+juego_or_punto(all_hands, juego)   # LanceType.JUEGO o LanceType.PUNTO
+```
