@@ -31,15 +31,18 @@ from mus_engine.game import (
     CutMusAction,
     DiscardAction,
     Game,
+    GameRecord,
     GameState,
     HandState,
     LegalActions,
     MusAction,
+    Observation,
     OrdagoAction,
     PassAction,
     Phase,
     RaiseAction,
     RejectAction,
+    RulesEngine,
 )
 from mus_engine.players import (
     Player,
@@ -53,6 +56,7 @@ from mus_engine.players import (
     previous_player,
     team_of,
 )
+from mus_engine.replay import GameReplay
 from mus_engine.rng import Rng
 from mus_engine.rules import (
     ChicaEvaluator,
@@ -65,7 +69,7 @@ from mus_engine.rules import (
     PuntoEvaluator,
     resolve,
 )
-from mus_engine.scoring import GameScore
+from mus_engine.scoring import GameScore, ScoringEngine
 
 __all__ = [
     "AcceptAction",
@@ -83,6 +87,8 @@ __all__ = [
     "GameConfig",
     "GameFinishedError",
     "GameNotStartedError",
+    "GameRecord",
+    "GameReplay",
     "GameScore",
     "GameState",
     "GrandeEvaluator",
@@ -103,6 +109,7 @@ __all__ = [
     "MusAction",
     "MusEngineError",
     "NotYourTurnError",
+    "Observation",
     "OrdagoAction",
     "ParesCategory",
     "ParesEvaluator",
@@ -116,6 +123,8 @@ __all__ = [
     "RankingPolicy",
     "RejectAction",
     "Rng",
+    "RulesEngine",
+    "ScoringEngine",
     "SeatId",
     "Suit",
     "Table",

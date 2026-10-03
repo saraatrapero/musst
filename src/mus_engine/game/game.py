@@ -10,6 +10,7 @@ from __future__ import annotations
 import secrets
 from collections.abc import Sequence
 
+from mus_engine.cards.card import Card
 from mus_engine.config import GameConfig
 from mus_engine.errors import (
     GameFinishedError,
@@ -17,6 +18,7 @@ from mus_engine.errors import (
     InvalidConfigError,
     InvalidPlayerError,
     InvalidStateError,
+    PrivateInformationError,
 )
 from mus_engine.events.events import (
     Emission,
@@ -30,7 +32,9 @@ from mus_engine.game import invariants, machine
 from mus_engine.game.actions import Action
 from mus_engine.game.flow import run_automatic
 from mus_engine.game.legal import LegalActions
+from mus_engine.game.observations import Observation, build_observation
 from mus_engine.game.phases import Phase
+from mus_engine.game.record import GameRecord
 from mus_engine.game.state import GameState
 from mus_engine.game.transition import enter
 from mus_engine.players import seating
@@ -67,6 +71,7 @@ class Game:
             raise InvalidConfigError(f"La semilla debe ser un entero: {seed!r}")
         self._state = GameState(config=config, table=table, rng=Rng(seed))
         self._log: list[EventEnvelope] = []
+        self._actions: list[tuple[SeatId, Action]] = []
 
     # --- Acciones -------------------------------------------------------------------
 
@@ -77,7 +82,7 @@ class Game:
         state = self._state
         emitted: tuple[Emission, ...] = (
             Emission.engine(RngSeeded(state.rng.seed)),
-            Emission.public(GameStarted(state.table.names, state.config.target_score)),
+            Emission.public(GameStarted(state.table.names, state.config)),
         )
         state, entered = enter(state, Phase.CHOOSE_FIRST_DEALER)
         state, automatic = run_automatic(state)
@@ -94,6 +99,7 @@ class Game:
         player = seating.seat(player_id)
         state, emitted = machine.apply(self._state, player, action)
         new = self._commit(state, emitted)
+        self._actions.append((player, action))
         return tuple(e for e in new if e.visible_to(player))
 
     # --- Consultas ------------------------------------------------------------------
@@ -102,6 +108,33 @@ class Game:
         """Estado completo e inmutable. **Contiene información secreta**: no entregar a
         jugadores ni bots."""
         return self._state
+
+    def get_observation(self, player_id: int) -> Observation:
+        """Lo que ``player_id`` puede saber ahora. Inmutable y sin información ajena."""
+        player = seating.seat(player_id)
+        return build_observation(
+            self._state,
+            player,
+            self._log,
+            machine.actors(self._state),
+            machine.legal_actions(self._state, player),
+        )
+
+    def get_hand(self, player_id: int, viewer_id: int) -> tuple[Card, ...]:
+        """Naipes de ``player_id`` vistos por ``viewer_id``.
+
+        Lanza :class:`PrivateInformationError` si ``viewer_id`` no puede verlos (no son
+        suyos y no se han enseñado).
+        """
+        player, viewer = seating.seat(player_id), seating.seat(viewer_id)
+        hand = self._state.hand
+        if hand is None:
+            raise GameNotStartedError("Todavía no se ha repartido ninguna jugada")
+        if player != viewer and not hand.revealed:
+            raise PrivateInformationError(
+                f"El jugador {viewer} no puede ver los naipes del jugador {player}"
+            )
+        return hand.hand_of(player)
 
     def get_legal_actions(self, player_id: int) -> LegalActions:
         player = seating.seat(player_id)
@@ -122,6 +155,12 @@ class Game:
     def event_log(self) -> tuple[EventEnvelope, ...]:
         """Registro completo, incluidos eventos privados y de motor (auditoría/replay)."""
         return tuple(self._log)
+
+    @property
+    def record(self) -> GameRecord:
+        """Registro reproducible: jugadores, configuración, semilla y acciones aceptadas."""
+        state = self._state
+        return GameRecord(state.table.names, state.config, state.rng.seed, tuple(self._actions))
 
     @property
     def phase(self) -> Phase:

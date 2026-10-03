@@ -16,6 +16,7 @@ from dataclasses import dataclass
 from enum import Enum
 
 from mus_engine.cards.card import Card
+from mus_engine.config import GameConfig
 from mus_engine.players.seating import SeatId
 
 
@@ -32,8 +33,10 @@ class Event:
 
 @dataclass(frozen=True, slots=True)
 class GameStarted(Event):
+    """Público: jugadores y reglas de la partida (la configuración no es secreta)."""
+
     player_names: tuple[str, str, str, str]
-    target_score: int
+    config: GameConfig
 
 
 @dataclass(frozen=True, slots=True)

@@ -59,3 +59,27 @@ def play_seeded(game: Game, choice_seed: int, max_steps: int) -> list[tuple[Seat
         game.apply_action(player, action)
         played.append((player, action))
     return played
+
+
+def play_seeded_without_ordago(
+    game: Game, choice_seed: int, max_steps: int
+) -> list[tuple[SeatId, Action]]:
+    """Como :func:`play_seeded` pero sin órdagos: partidas largas, de muchas jugadas."""
+    import random
+
+    from mus_engine import OrdagoAction
+
+    rng = random.Random(choice_seed)
+    played: list[tuple[SeatId, Action]] = []
+    while len(played) < max_steps and game.current_actors():
+        player = rng.choice(game.current_actors())
+        legal = game.get_legal_actions(player)
+        options: list[Action] = [a for a in legal.actions if not isinstance(a, OrdagoAction)]
+        if legal.bet is not None:
+            options.append(BetAction(rng.randint(legal.bet.minimum, legal.bet.minimum + 4)))
+        if legal.raise_ is not None:
+            options.append(RaiseAction(rng.randint(legal.raise_.minimum, legal.raise_.minimum + 2)))
+        action = rng.choice(options)
+        game.apply_action(player, action)
+        played.append((player, action))
+    return played
