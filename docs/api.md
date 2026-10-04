@@ -8,24 +8,26 @@ internos y pueden cambiar.
 ```python
 from mus_engine import CutMusAction, Game, GameConfig, GameReplay
 
-game = Game(players=("Ana", "Bea", "Carlos", "Dani"),
-            config=GameConfig(target_score=40, games_to_win=1),
-            seed=12345)
+game = Game(
+    players=("Ana", "Bea", "Carlos", "Dani"),
+    config=GameConfig(target_score=40, games_to_win=1),
+    seed=12345,
+)
 game.start()
 
 while not game.is_finished:
     (player,) = game.current_actors()
-    observation = game.get_observation(player)   # lo único que un bot debe mirar
-    legal = observation.legal_actions             # == game.get_legal_actions(player)
+    observation = game.get_observation(player)  # lo único que un bot debe mirar
+    legal = observation.legal_actions  # == game.get_legal_actions(player)
     # Aquí decide el jugador o el bot. Política de ejemplo: cortar el mus y, después,
     # la primera acción legal (pasar). Ojo: pedir mus siempre no termina nunca, porque
     # el reglamento no limita las rondas de mus (D-14).
     cut = CutMusAction()
     action = cut if legal.contains(cut) else next(iter(legal))
-    game.apply_action(player, action)             # el motor valida y aplica
+    game.apply_action(player, action)  # el motor valida y aplica
 
 game.winner, game.get_state().score
-replay = GameReplay.from_game(game)               # o GameReplay.from_events(game.event_log)
+replay = GameReplay.from_game(game)  # o GameReplay.from_events(game.event_log)
 ```
 
 | Concepto | Clase |
@@ -65,10 +67,10 @@ Card.from_code("1B") # Card(1B); lanza InvalidCardError si no existe (p. ej. "8O
 ### `Deck`
 
 ```python
-Deck.standard()                 # 40 naipes en orden canónico
+Deck.standard()  # 40 naipes en orden canónico
 deck, rng = deck.shuffled(rng)  # nueva baraja barajada + siguiente estado del RNG
-cards, rest = deck.draw(4)      # roba de arriba; no modifica `deck`
-deck.validate_complete()        # exactamente las 40, sin duplicados
+cards, rest = deck.draw(4)  # roba de arriba; no modifica `deck`
+deck.validate_complete()  # exactamente las 40, sin duplicados
 len(deck), card in deck, iter(deck)
 ```
 
@@ -79,9 +81,9 @@ Un `Deck` nunca puede contener duplicados ni objetos que no sean cartas
 ### `Rng`
 
 ```python
-rng = Rng(seed=12345)                 # valor inmutable (seed, stream)
-items, rng = rng.shuffle(sequence)    # Fisher–Yates, no modifica la entrada
-index, rng = rng.choice_index(4)      # entero uniforme en [0, 4)
+rng = Rng(seed=12345)  # valor inmutable (seed, stream)
+items, rng = rng.shuffle(sequence)  # Fisher–Yates, no modifica la entrada
+index, rng = rng.choice_index(4)  # entero uniforme en [0, 4)
 ```
 
 Basado en SHA-256 en modo contador: la misma semilla produce el mismo resultado
@@ -92,10 +94,10 @@ en cualquier versión de Python y plataforma (test de regresión
 
 ```python
 policy = RankingPolicy.from_config(config)
-policy.effective_rank(card)       # 3 -> REY, 2 -> AS en ocho reyes (C.II-3)
-policy.game_points(card)          # figuras 10, as 1, resto su número (D-01)
+policy.effective_rank(card)  # 3 -> REY, 2 -> AS en ocho reyes (C.II-3)
+policy.game_points(card)  # figuras 10, as 1, resto su número (D-01)
 policy.total_game_points(cards)
-policy.playing_ranks              # rangos efectivos posibles, de menor a mayor
+policy.playing_ranks  # rangos efectivos posibles, de menor a mayor
 ```
 
 ### `GameConfig`
@@ -125,11 +127,11 @@ MusEngineError
 ### `Player`, `Team`, `Table`
 
 ```python
-table = Table.from_names(("Ana", "Bea", "Carlos", "Dani"))   # asientos 0..3 en orden de habla
-table.player(1)               # Player(id=1, name="Bea")
-table.get_partner(0)          # Player(id=2, name="Carlos")
-table.get_team(3)             # Team(id=TeamId.B, seats=(1, 3))
-table.are_teammates(0, 2)     # True
+table = Table.from_names(("Ana", "Bea", "Carlos", "Dani"))  # asientos 0..3 en orden de habla
+table.player(1)  # Player(id=1, name="Bea")
+table.get_partner(0)  # Player(id=2, name="Carlos")
+table.get_team(3)  # Team(id=TeamId.B, seats=(1, 3))
+table.are_teammates(0, 2)  # True
 ```
 
 - `Player` es sólo identidad (asiento + nombre): **no** tiene mano, estrategia ni
@@ -168,18 +170,18 @@ durante la jugada; el turno lo decide la máquina de estados (fase 3+).
 from mus_engine import Game, GameConfig, MusAction
 
 game = Game(players=("Ana", "Bea", "Carlos", "Dani"), config=GameConfig(), seed=12345)
-game.start()                       # sorteo del primer reparto + reparto -> MUS_DECISION
-game.phase                         # Phase.MUS_DECISION
-game.mano, game.dealer             # mano y postre de la jugada en curso
-game.is_hand(0)                    # ¿es mano el jugador 0?
-game.current_actors()              # quién puede actuar ahora
-game.get_legal_actions(0)          # LegalActions
+game.start()  # sorteo del primer reparto + reparto -> MUS_DECISION
+game.phase  # Phase.MUS_DECISION
+game.mano, game.dealer  # mano y postre de la jugada en curso
+game.is_hand(0)  # ¿es mano el jugador 0?
+game.current_actors()  # quién puede actuar ahora
+game.get_legal_actions(0)  # LegalActions
 game.apply_action(0, MusAction())  # valida y aplica; devuelve los eventos que ve el jugador 0
-game.get_events(viewer=0)          # historial visible para el jugador 0
-game.get_events()                  # sólo eventos públicos
-game.get_state()                   # GameState completo (¡con secretos! no darlo a jugadores)
-game.event_log                     # registro completo (auditoría / replay)
-game.seed                          # semilla (generada si no se pasa)
+game.get_events(viewer=0)  # historial visible para el jugador 0
+game.get_events()  # sólo eventos públicos
+game.get_state()  # GameState completo (¡con secretos! no darlo a jugadores)
+game.event_log  # registro completo (auditoría / replay)
+game.seed  # semilla (generada si no se pasa)
 ```
 
 - Misma semilla + mismas acciones ⇒ mismos estados y mismos eventos.
@@ -199,11 +201,11 @@ ser enteros positivos). La legalidad la decide siempre el motor.
 
 ```python
 legal = game.get_legal_actions(0)
-legal.contains(action)    # True si el motor aceptaría la acción
-legal.actions             # acciones discretas
-legal.bet, legal.raise_   # AmountRange(minimum, maximum|None) para envites y revoques
-legal.action_types()      # tipos de acción disponibles
-list(legal)               # acciones concretas (rangos representados por su mínimo)
+legal.contains(action)  # True si el motor aceptaría la acción
+legal.actions  # acciones discretas
+legal.bet, legal.raise_  # AmountRange(minimum, maximum|None) para envites y revoques
+legal.action_types()  # tipos de acción disponibles
+list(legal)  # acciones concretas (rangos representados por su mínimo)
 ```
 
 ### Eventos
@@ -230,12 +232,12 @@ from mus_engine import CutMusAction, DiscardAction, Game, MusAction, Phase
 
 game = Game(seed=7)
 game.start()
-(player,) = game.current_actors()              # la mano
-game.apply_action(player, MusAction())         # o CutMusAction(): pasa a LANCE (grande)
+(player,) = game.current_actors()  # la mano
+game.apply_action(player, MusAction())  # o CutMusAction(): pasa a LANCE (grande)
 # ... cuando los cuatro dan mus, game.phase == Phase.DISCARD
-(player,) = game.current_actors()              # empieza el que reparte
-legal = game.get_legal_actions(player)         # las 15 combinaciones de sus naipes
-game.apply_action(player, legal.actions[0])    # DiscardAction(frozenset({...}))
+(player,) = game.current_actors()  # empieza el que reparte
+legal = game.get_legal_actions(player)  # las 15 combinaciones de sus naipes
+game.apply_action(player, legal.actions[0])  # DiscardAction(frozenset({...}))
 ```
 
 `HandState.mus` (`MusState`): `round`, `speaker_index`, `requested` (quién dio mus en
@@ -254,15 +256,15 @@ from mus_engine import ChicaEvaluator, GrandeEvaluator, resolve
 from mus_engine.cards import cards_from_codes
 from mus_engine.players import SeatId
 
-grande = GrandeEvaluator()                          # usa RankingPolicy() (ocho reyes)
+grande = GrandeEvaluator()  # usa RankingPolicy() (ocho reyes)
 grande.strength(cards_from_codes("12O 3C 11E 1B"))  # (12, 12, 11, 1): mayor es mejor
 ChicaEvaluator().strength(cards_from_codes("1O 2C 4E 12B"))  # (-1, -1, -4, -12)
 
 hands = {SeatId(0): ..., SeatId(1): ..., SeatId(2): ..., SeatId(3): ...}
 result = resolve(grande, hands, mano=SeatId(1))
-result.winner, result.winning_team   # ganador y su pareja
-result.tied                          # empatados con el ganador (el ganador primero)
-result.decided_by_mano               # True si el empate lo resolvió la mano (D-09)
+result.winner, result.winning_team  # ganador y su pareja
+result.tied  # empatados con el ganador (el ganador primero)
+result.decided_by_mano  # True si el empate lo resolvió la mano (D-09)
 ```
 
 - `GrandeEvaluator(policy)` / `ChicaEvaluator(policy)` aceptan otra `RankingPolicy`
@@ -278,19 +280,19 @@ from mus_engine import GameConfig, ParesCategory, ParesEvaluator
 from mus_engine.rules import Participation, pares_points
 
 pares = ParesEvaluator()
-hand = pares.classify(cards)          # ParesHand(category, ranks)
-hand.category                         # ParesCategory.NONE / PAREJA / MEDIAS / DUPLES
-hand.ranks                            # (par,) / (trío,) / (par mayor, par menor)
+hand = pares.classify(cards)  # ParesHand(category, ranks)
+hand.category  # ParesCategory.NONE / PAREJA / MEDIAS / DUPLES
+hand.ranks  # (par,) / (trío,) / (par mayor, par menor)
 pares.has_pares(cards)
-pares.strength(cards)                 # (categoría, rangos...): mayor es mejor
-pares_points(hand.category, GameConfig())   # 0, 1, 2 o 3 (D-02)
+pares.strength(cards)  # (categoría, rangos...): mayor es mejor
+pares_points(hand.category, GameConfig())  # 0, 1, 2 o 3 (D-02)
 
 p = Participation.from_holders(players_with_pares, mano)
-p.players          # en orden de habla desde la mano
-p.lance_mano       # primero que tiene pares (Voc. "Mano")
-p.is_contested     # las dos parejas tienen pares -> hay envites
-p.single_team      # sólo una pareja -> cobra sin envites (D-20)
-p.is_void          # nadie tiene pares -> no se juega el lance
+p.players  # en orden de habla desde la mano
+p.lance_mano  # primero que tiene pares (Voc. "Mano")
+p.is_contested  # las dos parejas tienen pares -> hay envites
+p.single_team  # sólo una pareja -> cobra sin envites (D-20)
+p.is_void  # nadie tiene pares -> no se juega el lance
 ```
 
 ## Fase 7 — Juego y punto
@@ -300,17 +302,17 @@ from mus_engine import GameConfig, JuegoEvaluator, PuntoEvaluator
 from mus_engine.rules import JUEGO_ORDER, juego_or_punto, juego_points, punto_points
 
 juego = JuegoEvaluator()
-hand = juego.classify(cards)       # JuegoHand(total)
-hand.has_juego                     # total >= 31
-hand.total                         # 4..40
-hand.juego_rank                    # 0 (31, la mejor) .. 9 (33), None sin juego
-juego.strength(cards)              # (10,) para 31 ... (1,) para 33; (0,) sin juego
-juego_points(hand, GameConfig())   # 3 / 2 / 0
+hand = juego.classify(cards)  # JuegoHand(total)
+hand.has_juego  # total >= 31
+hand.total  # 4..40
+hand.juego_rank  # 0 (31, la mejor) .. 9 (33), None sin juego
+juego.strength(cards)  # (10,) para 31 ... (1,) para 33; (0,) sin juego
+juego_points(hand, GameConfig())  # 3 / 2 / 0
 
-PuntoEvaluator().strength(cards)   # (total,), sólo para jugadas sin juego
-punto_points(GameConfig())         # 1
+PuntoEvaluator().strength(cards)  # (total,), sólo para jugadas sin juego
+punto_points(GameConfig())  # 1
 
-juego_or_punto(all_hands, juego)   # LanceType.JUEGO o LanceType.PUNTO
+juego_or_punto(all_hands, juego)  # LanceType.JUEGO o LanceType.PUNTO
 ```
 
 ## Fases 8–10 — Envites, órdago, tanteo y final
@@ -320,19 +322,19 @@ from mus_engine import AcceptAction, BetAction, OrdagoAction, PassAction, RaiseA
 
 (player,) = game.current_actors()
 legal = game.get_legal_actions(player)
-legal.bet          # AmountRange(2, None) si puede envidar
-legal.raise_       # AmountRange(2, None) si puede revocar ("N más")
+legal.bet  # AmountRange(2, None) si puede envidar
+legal.raise_  # AmountRange(2, None) si puede revocar ("N más")
 game.apply_action(player, BetAction(2))
-game.apply_action(rival, RaiseAction(3))     # sube 3 sobre lo envidado
-game.apply_action(other, AcceptAction())     # o RejectAction(), OrdagoAction()
+game.apply_action(rival, RaiseAction(3))  # sube 3 sobre lo envidado
+game.apply_action(other, AcceptAction())  # o RejectAction(), OrdagoAction()
 
 hand = game.get_state().current_hand
-hand.lance          # LanceType en curso
-hand.bet            # BetState: status, participants, to_act, accepted, pending, proposer, is_ordago
-hand.outcomes       # LanceOutcome de los lances cerrados
-hand.pares_holders, hand.juego_holders   # declaraciones públicas
+hand.lance  # LanceType en curso
+hand.bet  # BetState: status, participants, to_act, accepted, pending, proposer, is_ordago
+hand.outcomes  # LanceOutcome de los lances cerrados
+hand.pares_holders, hand.juego_holders  # declaraciones públicas
 
-game.get_state().score    # GameScore(tantos, games)
+game.get_state().score  # GameScore(tantos, games)
 game.is_finished, game.winner
 ```
 
@@ -348,19 +350,21 @@ Puntuación programática: `ScoringEngine(config)` con `end_of_hand_entries(...)
 obs = game.get_observation(player)
 obs.my_hand, obs.phase, obs.lance, obs.score, obs.mano, obs.dealer
 obs.to_act, obs.is_my_turn, obs.legal_actions
-obs.bet                      # PublicBetView del envite en curso
+obs.bet  # PublicBetView del envite en curso
 obs.mus_requested, obs.mus_cut_by, obs.discard_counts
 obs.pares_holders, obs.juego_holders, obs.outcomes
-obs.revealed_hands           # sólo tras enseñarse (final de jugada u órdago)
-obs.events                   # públicos + privados propios
+obs.revealed_hands  # sólo tras enseñarse (final de jugada u órdago)
+obs.events  # públicos + privados propios
 
-game.get_hand(player, viewer)    # PrivateInformationError si no puede verlos
+game.get_hand(player, viewer)  # PrivateInformationError si no puede verlos
 
-record = game.record             # GameRecord(player_names, config, seed, actions)
-GameRecord.from_events(game.event_log)   # reconstrucción desde los eventos
+record = game.record  # GameRecord(player_names, config, seed, actions)
+GameRecord.from_events(game.event_log)  # reconstrucción desde los eventos
 
-replay = GameReplay(record)      # o .from_game(game) / .from_events(log)
-replay.next(); replay.previous(); replay.jump_to(10)
+replay = GameReplay(record)  # o .from_game(game) / .from_events(log)
+replay.next()
+replay.previous()
+replay.jump_to(10)
 replay.state, replay.position, replay.last_action
 replay.events(viewer), replay.observation(viewer)
 

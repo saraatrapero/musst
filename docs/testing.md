@@ -28,6 +28,8 @@ python -m pytest --cov=mus_engine --cov-report=term-missing
 
 ## Criterios
 
+- La CI (`.github/workflows/ci.yml`) aplica estos criterios en Python 3.11, 3.12 y 3.13.
+
 - `mypy --strict` también sobre los tests.
 - Cobertura objetivo: 100 % en `cards/`, `rules/`, `betting/`, `scoring/`.
 - Tests acumulados: fase 1: 114; fase 2: 183; fase 3: 290; fase 4: 347; fase 5: 401;

@@ -40,12 +40,12 @@ python -m pip install -e ".[dev]"     # Python >= 3.11
 from mus_engine import BetAction, CutMusAction, Game, GameConfig, GameReplay
 
 game = Game(players=("Ana", "Bea", "Carlos", "Dani"), config=GameConfig(), seed=12345)
-game.start()                          # sorteo del primer reparto (C.III-1) y reparto (C.III-2)
+game.start()  # sorteo del primer reparto (C.III-1) y reparto (C.III-2)
 
-(player,) = game.current_actors()     # la mano
-obs = game.get_observation(player)    # sus naipes, el marcador, la fase... nada ajeno
+(player,) = game.current_actors()  # la mano
+obs = game.get_observation(player)  # sus naipes, el marcador, la fase... nada ajeno
 game.apply_action(player, CutMusAction())
-game.apply_action(player, BetAction(2))   # envido en grande
+game.apply_action(player, BetAction(2))  # envido en grande
 # ... cada jugador, en su turno, pide acciones; el motor valida, aplica y puntúa.
 
 game.is_finished, game.winner, game.get_state().score
@@ -57,13 +57,13 @@ Cartas y baraja:
 ```python
 from mus_engine import Card, Deck, GameConfig, Rank, RankingPolicy, Rng, Suit
 
-config = GameConfig()                       # 40 tantos, ocho reyes y ocho ases
-deck, rng = Deck.standard().shuffled(Rng(seed=12345))   # misma semilla => mismo orden
+config = GameConfig()  # 40 tantos, ocho reyes y ocho ases
+deck, rng = Deck.standard().shuffled(Rng(seed=12345))  # misma semilla => mismo orden
 hand, deck = deck.draw(4)
 
 policy = RankingPolicy.from_config(config)
-policy.effective_rank(Card(Rank.TRES, Suit.OROS))       # Rank.REY  (C.II-3)
-policy.total_game_points(hand)                          # suma para juego/punto (D-01)
+policy.effective_rank(Card(Rank.TRES, Suit.OROS))  # Rank.REY  (C.II-3)
+policy.total_game_points(hand)  # suma para juego/punto (D-01)
 ```
 
 ## Calidad
@@ -74,6 +74,13 @@ python -m pytest --cov=mus_engine
 ruff check . && ruff format --check .
 python -m mypy                   # modo estricto sobre src/ y tests/
 ```
+
+## Integración continua
+
+`.github/workflows/ci.yml` ejecuta en cada push a `main` y en cada pull request, con
+Python 3.11, 3.12 y 3.13: `ruff check`, `ruff format --check`, `mypy --strict` y la
+batería de tests exigiendo cobertura del 100 %. La versión de `ruff` está fijada en
+`pyproject.toml` para que el formato no cambie entre entornos.
 
 ## Documentación
 

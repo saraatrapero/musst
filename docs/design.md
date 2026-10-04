@@ -156,65 +156,68 @@ distance_from_mano(seat, mano) -> int    # 0 = mano … 3 = postre; usado en emp
 
 ```python
 @dataclass(frozen=True)
-class GameState:                        # FULL_GAME_STATE (contiene secretos)
+class GameState:  # FULL_GAME_STATE (contiene secretos)
     config: GameConfig
     players: tuple[Player, ...]
-    score: GameScore                    # tantos por pareja
+    score: GameScore  # tantos por pareja
     hand_number: int
-    dealer: SeatId                      # postre
-    mano: SeatId                        # next_player(dealer)
+    dealer: SeatId  # postre
+    mano: SeatId  # next_player(dealer)
     phase: Phase
-    hand: HandState | None              # None antes de empezar / tras terminar
-    rng: RngState                       # semilla + contador → determinismo
+    hand: HandState | None  # None antes de empezar / tras terminar
+    rng: RngState  # semilla + contador → determinismo
     winner: TeamId | None
+
 
 @dataclass(frozen=True)
 class HandState:
-    hands: tuple[tuple[Card, ...], ...] # 4 manos de 4 cartas
-    stock: Deck                         # mazo restante (orden de robo)
-    discard_pile: tuple[Card, ...]      # descartes acumulados
+    hands: tuple[tuple[Card, ...], ...]  # 4 manos de 4 cartas
+    stock: Deck  # mazo restante (orden de robo)
+    discard_pile: tuple[Card, ...]  # descartes acumulados
     mus: MusState
     lance: LanceType | None
     bet: BetState | None
-    declarations: Declarations          # pares/juego declarados (públicos)
-    lance_outcomes: tuple[LanceOutcome, ...]   # resultado de cada lance jugado
-    pending_score: HandScore            # tantos a anotar al final de la mano
+    declarations: Declarations  # pares/juego declarados (públicos)
+    lance_outcomes: tuple[LanceOutcome, ...]  # resultado de cada lance jugado
+    pending_score: HandScore  # tantos a anotar al final de la mano
     turn: SeatId | None
-    revealed: frozenset[SeatId]         # manos mostradas (tras órdago/recuento)
+    revealed: frozenset[SeatId]  # manos mostradas (tras órdago/recuento)
+
 
 @dataclass(frozen=True)
 class MusState:
-    round: int                          # nº de rondas de mus en esta mano
-    speaker: SeatId | None              # quién decide mus ahora
-    requested_by: frozenset[SeatId]     # quién ha pedido mus en esta ronda
-    cut_by: SeatId | None               # quién cortó (≠ mano, ≠ último que envidó)
-    pending_discards: frozenset[SeatId] # quién falta por descartarse
-    discards: tuple[tuple[Card, ...] | None, ...]   # privado hasta resolverse
+    round: int  # nº de rondas de mus en esta mano
+    speaker: SeatId | None  # quién decide mus ahora
+    requested_by: frozenset[SeatId]  # quién ha pedido mus en esta ronda
+    cut_by: SeatId | None  # quién cortó (≠ mano, ≠ último que envidó)
+    pending_discards: frozenset[SeatId]  # quién falta por descartarse
+    discards: tuple[tuple[Card, ...] | None, ...]  # privado hasta resolverse
 ```
 
 ### 2.5 Apuestas (`betting/`)
 
 ```python
 class BetStatus(Enum):
-    OPEN            # nadie ha envidado aún; se habla por turno
-    PENDING         # hay envite/reenvite/órdago esperando respuesta
-    ACCEPTED        # "quiero": se juega a las cartas al final de la mano
-    REJECTED        # "no quiero": el proponente cobra el deje
-    ALL_PASSED      # "en paso"
-    ORDAGO_ACCEPTED # se resuelve inmediatamente
+    OPEN  # nadie ha envidado aún; se habla por turno
+    PENDING  # hay envite/reenvite/órdago esperando respuesta
+    ACCEPTED  # "quiero": se juega a las cartas al final de la mano
+    REJECTED  # "no quiero": el proponente cobra el deje
+    ALL_PASSED  # "en paso"
+    ORDAGO_ACCEPTED  # se resuelve inmediatamente
+
 
 @dataclass(frozen=True)
 class BetState:
     lance: LanceType
     status: BetStatus
-    accepted_amount: int       # lo ya querido en firme (0 si nada)
-    pending_amount: int        # total propuesto si se acepta lo pendiente
+    accepted_amount: int  # lo ya querido en firme (0 si nada)
+    pending_amount: int  # total propuesto si se acepta lo pendiente
     is_ordago: bool
-    proposer: SeatId | None    # quien hizo el último envite/reenvite
+    proposer: SeatId | None  # quien hizo el último envite/reenvite
     proposing_team: TeamId | None
-    to_act: tuple[SeatId, ...] # cola ordenada de quién debe hablar
+    to_act: tuple[SeatId, ...]  # cola ordenada de quién debe hablar
     passed: frozenset[SeatId]  # quién ya pasó / dijo no quiero
-    eligible: frozenset[SeatId]# quién puede hablar en este lance (pares/juego)
+    eligible: frozenset[SeatId]  # quién puede hablar en este lance (pares/juego)
 ```
 
 El deje de un "no quiero" es **una regla, no un caso**:
@@ -253,21 +256,21 @@ class GameConfig:
     kings_are_threes: bool = True
     aces_are_twos: bool = True
     cards_per_hand: int = 4
-    min_discard: int = 1                 # [D-13]
+    min_discard: int = 1  # [D-13]
     max_discard: int = 4
-    min_bet: int = 2                     # Voc. "Envido" = 2  [D-18]
-    min_raise: int = 2                   # [D-18]
+    min_bet: int = 2  # Voc. "Envido" = 2  [D-18]
+    min_raise: int = 2  # [D-18]
     points_pareja: int = 1
     points_medias: int = 2
     points_duples: int = 3
     points_juego_31: int = 3
     points_juego_other: int = 2
     points_punto: int = 1
-    points_passed_lance: int = 1         # grande/chica/punto "en paso"
+    points_passed_lance: int = 1  # grande/chica/punto "en paso"
     tantos_per_amarraco: int = 5
-    games_to_win: int = 1                # Intro-E: partida a N juegos (capa Match)
-    first_shuffler: SeatId = 0           # C.III-1 sorteo del primer reparto [D-03]
-    initial_dealer: SeatId | None = None # None = sorteo con la semilla
+    games_to_win: int = 1  # Intro-E: partida a N juegos (capa Match)
+    first_shuffler: SeatId = 0  # C.III-1 sorteo del primer reparto [D-03]
+    initial_dealer: SeatId | None = None  # None = sorteo con la semilla
     debug_invariants: bool = True
 ```
 
@@ -418,17 +421,19 @@ class EventEnvelope:
 
 ```python
 @dataclass(frozen=True)
-class Observation:                 # PLAYER_OBSERVATION
+class Observation:  # PLAYER_OBSERVATION
     seat: SeatId
     phase: Phase
     my_hand: tuple[Card, ...]
-    mano: SeatId; dealer: SeatId; turn: SeatId | None
+    mano: SeatId
+    dealer: SeatId
+    turn: SeatId | None
     score: GameScore
-    bet: PublicBetView | None      # sin campos internos
+    bet: PublicBetView | None  # sin campos internos
     declarations: Declarations
     discard_counts: tuple[int | None, ...]
-    revealed_hands: Mapping[SeatId, tuple[Card, ...]]   # MappingProxyType
-    public_events: tuple[EventEnvelope, ...]            # públicos + privados propios
+    revealed_hands: Mapping[SeatId, tuple[Card, ...]]  # MappingProxyType
+    public_events: tuple[EventEnvelope, ...]  # públicos + privados propios
     legal_actions: LegalActions
 ```
 
