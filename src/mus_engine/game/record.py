@@ -19,6 +19,7 @@ from mus_engine.events.events import (
     BetRaised,
     BetRejected,
     CardsDiscarded,
+    ClockTicked,
     DiscardDeclared,
     EventEnvelope,
     GameStarted,
@@ -28,11 +29,13 @@ from mus_engine.events.events import (
     OrdagoDeclared,
     Passed,
     RngSeeded,
+    SignalMade,
 )
 from mus_engine.game.actions import (
     AcceptAction,
     Action,
     BetAction,
+    ClockTick,
     CutMusAction,
     DiscardAction,
     MusAction,
@@ -40,8 +43,13 @@ from mus_engine.game.actions import (
     PassAction,
     RaiseAction,
     RejectAction,
+    SignalAction,
 )
 from mus_engine.players.seating import SeatId
+from mus_engine.rules.signals import Signal
+
+RecordEntry = tuple[SeatId, Action] | ClockTick
+"""Una acción de jugador ``(asiento, acción)`` o un paso del reloj."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -49,7 +57,7 @@ class GameRecord:
     player_names: tuple[str, str, str, str]
     config: GameConfig
     seed: int
-    actions: tuple[tuple[SeatId, Action], ...]
+    actions: tuple[RecordEntry, ...]
 
     @classmethod
     def from_events(cls, log: Sequence[EventEnvelope]) -> GameRecord:
@@ -57,7 +65,7 @@ class GameRecord:
         names: tuple[str, str, str, str] | None = None
         config: GameConfig | None = None
         seed: int | None = None
-        actions: list[tuple[SeatId, Action]] = []
+        actions: list[RecordEntry] = []
         pending_discards: dict[SeatId, int] = {}  # asiento -> posición en ``actions``
         for envelope in log:
             event = envelope.event
@@ -88,6 +96,10 @@ class GameRecord:
                 actions.append((event.seat, AcceptAction()))
             elif isinstance(event, BetRejected):
                 actions.append((event.seat, RejectAction()))
+            elif isinstance(event, SignalMade):
+                actions.append((event.seat, SignalAction(Signal(event.signal))))
+            elif isinstance(event, ClockTicked):
+                actions.append(ClockTick())
         if names is None or config is None or seed is None:
             raise InvariantViolationError(
                 "El registro de eventos no contiene GameStarted y RngSeeded: "

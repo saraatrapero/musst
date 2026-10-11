@@ -61,6 +61,13 @@ NOT_STARTED ──start()──► [CHOOSE_FIRST_DEALER]* ──► [DEAL]* ─�
 | `NEW_HAND` | automática | — | — | — |
 | `GAME_OVER` | terminal | nadie | ninguna (`GameFinishedError`) | `GameFinished` |
 
+## Señas y reloj
+
+Con `signals_enabled`, durante la fase `LANCE` cualquier jugador puede hacer una seña
+(`SignalAction`) aunque no tenga el turno; no cambia de fase ni de turno. Tras cada
+acción, y con cada `Game.tick()`, pasa un momento y avanzan las miradas
+(`GazeChanged`, público).
+
 ## Cadena de validación de `apply_action`
 
 1. Partida no iniciada → `GameNotStartedError`; terminada → `GameFinishedError`.

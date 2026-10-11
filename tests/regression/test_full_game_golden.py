@@ -10,11 +10,18 @@ import hashlib
 from tests.strategies import play_seeded_without_ordago
 
 from mus_engine import Game, GameConfig, GameScore
+from mus_engine.events import GameStarted
 from mus_engine.players import TeamId
 
 
 def _digest(game: Game) -> str:
-    return hashlib.sha256(repr(game.event_log).encode()).hexdigest()[:16]
+    """Huella del desarrollo de la partida.
+
+    Se excluye ``GameStarted`` porque incluye el ``repr`` de ``GameConfig``: añadir un
+    campo nuevo a la configuración (p. ej. las señas) no cambia la partida.
+    """
+    events = [e for e in game.event_log if not isinstance(e.event, GameStarted)]
+    return hashlib.sha256(repr(events).encode()).hexdigest()[:16]
 
 
 def test_golden_game_2024() -> None:
@@ -34,4 +41,4 @@ def test_golden_game_2024() -> None:
     assert summary == GOLDEN_2024
 
 
-GOLDEN_2024 = (TeamId.A, GameScore((45, 31), (2, 0)), 9, 123, 442, "5a1d245828d6bf61")
+GOLDEN_2024 = (TeamId.A, GameScore((45, 31), (2, 0)), 9, 123, 442, "bb78af388f66e8da")

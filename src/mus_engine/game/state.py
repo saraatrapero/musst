@@ -14,11 +14,13 @@ from mus_engine.cards.card import Card
 from mus_engine.cards.deck import Deck
 from mus_engine.config import GameConfig
 from mus_engine.errors import InvariantViolationError
+from mus_engine.game.gaze import GazeState
 from mus_engine.game.phases import Phase
 from mus_engine.players.player import Table
 from mus_engine.players.seating import SeatId, TeamId, seat
 from mus_engine.rng import Rng
 from mus_engine.rules.lance import LanceType
+from mus_engine.rules.signals import Signal
 from mus_engine.scoring.score import GameScore
 from mus_engine.scoring.scoring import LanceOutcome
 
@@ -44,6 +46,15 @@ class MusState:
 
 
 @dataclass(frozen=True, slots=True)
+class SignalRecord:
+    """Una seña hecha en la jugada y quién la vio. Información privada del motor."""
+
+    sender: SeatId
+    signal: Signal
+    seen_by: tuple[SeatId, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class HandState:
     """Estado de una jugada (desde el reparto hasta el tanteo)."""
 
@@ -60,6 +71,7 @@ class HandState:
     pares_holders: tuple[bool, ...] | None = None  # declaración pública de pares
     juego_holders: tuple[bool, ...] | None = None  # declaración pública de juego
     revealed: bool = False  # se han enseñado las cuatro manos
+    signals: tuple[SignalRecord, ...] = ()  # señas hechas en la jugada (privado)
 
     def hand_of(self, player: SeatId) -> tuple[Card, ...]:
         return self.hands[seat(player)]
@@ -80,6 +92,7 @@ class GameState:
     pending_dealer: SeatId | None = None  # quién repartirá la próxima jugada
     hand: HandState | None = None
     winner: TeamId | None = None
+    gaze: GazeState | None = None  # miradas (sólo con señas activadas)
 
     def evolve(self, **changes: object) -> GameState:
         """Copia con cambios. Atajo de ``dataclasses.replace`` con tipo de retorno."""

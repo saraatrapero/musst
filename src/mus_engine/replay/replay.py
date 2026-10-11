@@ -10,15 +10,14 @@ from __future__ import annotations
 
 from mus_engine.errors import InvariantViolationError
 from mus_engine.events.events import EventEnvelope
-from mus_engine.game.actions import Action
+from mus_engine.game.actions import ClockTick
 from mus_engine.game.game import Game
 from mus_engine.game.legal import NO_ACTIONS
 from mus_engine.game.observations import Observation, build_observation
-from mus_engine.game.record import GameRecord
+from mus_engine.game.record import GameRecord, RecordEntry
 from mus_engine.game.state import GameState
 from mus_engine.players import seating
 from mus_engine.players.player import Table
-from mus_engine.players.seating import SeatId
 
 
 class GameReplay:
@@ -32,8 +31,11 @@ class GameReplay:
         game.start()
         self._states: list[GameState] = [game.get_state()]
         self._event_counts: list[int] = [len(game.event_log)]
-        for player, action in record.actions:
-            game.apply_action(player, action)
+        for entry in record.actions:
+            if isinstance(entry, ClockTick):
+                game.tick()
+            else:
+                game.apply_action(*entry)
             self._states.append(game.get_state())
             self._event_counts.append(len(game.event_log))
         self._log = game.event_log
@@ -98,8 +100,8 @@ class GameReplay:
         return self._states[self._position]
 
     @property
-    def last_action(self) -> tuple[SeatId, Action] | None:
-        """Acción que llevó a la posición actual (``None`` en la posición 0)."""
+    def last_action(self) -> RecordEntry | None:
+        """Acción (o paso del reloj) que llevó a la posición actual (``None`` en la 0)."""
         return None if self.at_start else self.record.actions[self._position - 1]
 
     @property

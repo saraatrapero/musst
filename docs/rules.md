@@ -182,6 +182,24 @@ Implementado en `betting/bets.py`, `game/handlers/lance.py`, `game/lance_flow.py
 | D-25 quien pasó puede contestar | rivales del proponente entre los participantes | `test_passer_can_answer_later_bet` |
 | Intro-E partida a N juegos | `games_to_win`; al ganar un juego se reinicia el tanteo | `test_several_games_*`, `test_last_game_*` |
 
+### Señas (capítulo VIII)
+
+Implementado en `rules/signals.py`, `game/signals.py` y `game/gaze.py`; se activa con
+`GameConfig(signals_enabled=True)`. Decisiones en `docs/ai-design.md` §2 (IA-1, IA-2,
+S-1…S-4).
+
+| Regla | Implementación | Test |
+|---|---|---|
+| C.VIII-1/2 señas oficiales | `Signal` (sin "cortar el mus" ni "envidar más", S-1) | `tests/unit/test_signal_rules.py` |
+| C.VIII-3 no antes del corte | sólo en la fase `LANCE` (S-2) | `test_no_signals_before_the_cut` |
+| C.VIII-4 sólo la jugada que se tiene | sólo señas verdaderas (IA-1) | `test_false_signal_is_rejected` |
+| C.VIII-5 medias (no de reyes) tras grande; treinta tras "juego no" | `timing_allows` (+ veintinueve, S-4) | `test_medias_not_of_kings_*`, `test_treinta_*` |
+| C.VIII-6 nada de señas parciales | con duples no hay "dos reyes"/"dos ases" | `test_partial_signal_is_rejected` |
+| C.VIII-2 juego no vale para 31; ciego sin otra jugada | `true_signals` | `test_juego_signal_excludes_31`, `test_ciego_*` |
+| IA-2 sólo ve la seña quien mira al que la hace | `GazeState.watchers_of` | `test_partner_looking_*`, `test_rival_looking_*` |
+
+Las señas ya no están fuera de alcance; la boquilla y los gestos libres sí.
+
 ---
 
 ## 3. Fuera de alcance del motor (y por qué)
@@ -190,7 +208,7 @@ Implementado en `betting/bets.py`, `game/handlers/lance.py`, `game/lance_flow.py
 |---|---|---|
 | Sorteos de mesas, suplencias, tiempos, actas, árbitros, conducta | C.I, C.V, C.X, C.XI, C.XII | organización de torneo, no reglas del juego |
 | Mus visto, naipes vistos, naipes de más/de menos, contar el mazo, barajas defectuosas | C.II-4, C.III-6…14, C.III-16 | el motor reparte; estos errores son imposibles por construcción |
-| Señas, boquilla, consejos al compañero, declarar naipes | C.IV-3, C.IV-5, C.VI-15…20, C.VI-23, C.VIII | comunicación entre jugadores; el motor no tiene canal de mesa. Puede añadirse más adelante como capa aparte |
+| Boquilla, consejos al compañero, declarar naipes (las señas sí se modelan, ver arriba) | C.IV-3, C.IV-5, C.VI-15…20, C.VI-23 | comunicación entre jugadores fuera del canal de señas |
 | Envites simultáneos de dos compañeros, plurales e imperativos | C.VI-1, C.VI-3, C.VI-5, C.VI-13 | el motor serializa las acciones: no existe simultaneidad |
 | Enseñar naipes / meterse en baraja durante un envite | C.VII-10, C.VII-11, C.VI-25 | acciones físicas no representables; el motor nunca muestra cartas antes de tiempo |
 | Corte del mus "a falta de tanto" en cualquier momento | C.IV-7 | en un motor por turnos cada jugador puede cortar en su turno; ver D-05 |

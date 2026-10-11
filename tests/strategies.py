@@ -83,3 +83,36 @@ def play_seeded_without_ordago(
         game.apply_action(player, action)
         played.append((player, action))
     return played
+
+
+def play_seeded_with_signals(game: Game, choice_seed: int, max_steps: int) -> int:
+    """Juego aleatorio con señas de cualquier asiento y pasos del reloj. Devuelve los pasos."""
+    import random
+
+    from mus_engine.game.actions import SignalAction
+
+    rng = random.Random(choice_seed)
+    steps = 0
+    while steps < max_steps and not game.is_finished:
+        steps += 1
+        roll = rng.random()
+        if roll < 0.15:
+            game.tick()
+            continue
+        if roll < 0.35:
+            seat = SeatId(rng.randrange(4))
+            signals = [
+                a for a in game.get_legal_actions(seat).actions if isinstance(a, SignalAction)
+            ]
+            if signals:
+                game.apply_action(seat, rng.choice(signals))
+                continue
+        (player,) = game.current_actors()
+        legal = game.get_legal_actions(player)
+        options: list[Action] = [a for a in legal.actions if not isinstance(a, SignalAction)]
+        if legal.bet is not None:
+            options.append(BetAction(rng.randint(legal.bet.minimum, legal.bet.minimum + 6)))
+        if legal.raise_ is not None:
+            options.append(RaiseAction(rng.randint(legal.raise_.minimum, legal.raise_.minimum + 4)))
+        game.apply_action(player, rng.choice(options))
+    return steps

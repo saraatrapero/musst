@@ -8,10 +8,12 @@ from __future__ import annotations
 
 from mus_engine.betting.bets import BetStatus
 from mus_engine.cards.deck import validate_complete
+from mus_engine.cards.ranking import RankingPolicy
 from mus_engine.errors import InvalidDeckError, InvariantViolationError
 from mus_engine.game.phases import Phase
 from mus_engine.game.state import GameState
 from mus_engine.players.seating import NUM_SEATS, TeamId, are_teammates, mano_for_dealer, team_of
+from mus_engine.rules.signals import true_signals
 
 
 def check_state(state: GameState) -> None:
@@ -19,6 +21,7 @@ def check_state(state: GameState) -> None:
     _check_positions(state)
     _check_mus(state)
     _check_bet(state)
+    _check_signals(state)
     _check_score(state)
 
 
@@ -100,6 +103,34 @@ def _check_bet(state: GameState) -> None:
             raise InvariantViolationError(f"Importes de envite incoherentes: {bet}")
     elif bet.proposer is not None or bet.accepted or bet.pending:
         raise InvariantViolationError(f"Lance abierto con envite registrado: {bet}")
+
+
+def _check_signals(state: GameState) -> None:
+    enabled = state.config.signals_enabled
+    started = state.phase is not Phase.NOT_STARTED
+    if (state.gaze is not None) != (enabled and started):
+        raise InvariantViolationError("Hay miradas si y sólo si las señas están activadas")
+    if state.gaze is not None:
+        for player, target in enumerate(state.gaze.targets):
+            if target == player:
+                raise InvariantViolationError(f"El jugador {player} se mira a sí mismo")
+        if any(not 1 <= r <= state.config.gaze_max_ticks for r in state.gaze.remaining):
+            raise InvariantViolationError(f"Duración de mirada fuera de rango: {state.gaze}")
+    hand = state.hand
+    if hand is None or not hand.signals:
+        return
+    if not enabled:
+        raise InvariantViolationError("Señas registradas con las señas desactivadas")
+    policy = RankingPolicy.from_config(state.config)
+    seen: set[tuple[int, object]] = set()
+    for record in hand.signals:
+        if record.signal not in true_signals(hand.hand_of(record.sender), policy):
+            raise InvariantViolationError(f"Seña falsa registrada: {record}")
+        if (record.sender, record.signal) in seen:
+            raise InvariantViolationError(f"Seña repetida en la jugada: {record}")
+        if record.sender in record.seen_by:
+            raise InvariantViolationError(f"Un jugador no ve su propia seña: {record}")
+        seen.add((record.sender, record.signal))
 
 
 def _check_score(state: GameState) -> None:

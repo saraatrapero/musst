@@ -1,6 +1,6 @@
 # Diseño de la IA de MUS.ST y de la plataforma de bots
 
-> Estado: **PROPUESTA PARA REVISIÓN**. Nada de esto está implementado todavía.
+> Estado: **APROBADO**. Implementación por fases (sección 6).
 > Base: el motor `mus_engine` (en `main`) y el enunciado de la práctica
 > *Implementación de Juegos y Jugadores de IA* (IA, 3 MAT-A, 2026/2027).
 
@@ -288,14 +288,15 @@ supone.
 ```python
 from mus_engine.bots import Bot, Observation, Action
 
+
 class MiBot(Bot):
     name = "mi-bot"
 
     def decide(self, observation: Observation) -> Action: ...
 
     # opcionales
-    def on_hand_end(self, observation: Observation) -> None: ...   # manos enseñadas
-    def on_game_end(self, observation: Observation) -> None: ...   # aprender
+    def on_hand_end(self, observation: Observation) -> None: ...  # manos enseñadas
+    def on_game_end(self, observation: Observation) -> None: ...  # aprender
 ```
 
 - **Registro**: un bot nuevo es un archivo en `bots/` (PR), sin tocar el motor.
@@ -349,7 +350,7 @@ de pasar a la siguiente.
 
 | Fase | Contenido | Requisito |
 |---|---|---|
-| A | Señas en el motor (C.VIII) | base de la IA |
+| A | Señas en el motor (C.VIII) ✅ | base de la IA |
 | B | API de bots, bots base (aleatorio y heurístico sencillo), tests de conformidad, torneo | 2.1, 2.2, 4.1, 3.1 |
 | C | Interfaz web (Streamlit): persona + bot compañero contra 2 bots; publicación | 1.2, 1.3 |
 | D | Fuerza de manos, CardCounting y ScoreAgent; bot **Medio** | 3.1 |
@@ -376,11 +377,15 @@ Aprobadas:
 | IA-4 | Orden de fases: señas → API de bots y torneo → web → agentes |
 | IA-5 | "Piedras" = tantos; amarraco = 5 tantos (D-19) |
 
-Pendientes:
+| S-1 | No se implementan las señas "cortar el mus" ni "envidar más" |
+| S-2 | Señas en todas las jugadas, sólo después del corte |
+| S-3 | "Dos reyes" = pareja exacta de reyes; con tres, medias de reyes; "pares" vale para cualquier pareja |
+| S-4 | Veintinueve, como treinta: sólo cuando nadie tiene juego |
+| IA-6 | Web: FastAPI + JavaScript + PostgreSQL |
+| IA-7 | Alojamiento en un servicio con plan gratuito (se concreta en la fase web) |
+
+Pendiente:
 
 | ID | Pregunta | Propuesta |
 |---|---|---|
-| S-1 … S-4 | Ambigüedades de señas (§2.3) | las propuestas de la tabla |
-| IA-6 | Tecnología web | FastAPI + JavaScript + PostgreSQL (la animación de avatares en tiempo real no encaja bien en Streamlit) |
-| IA-7 | Alojamiento | servidor y base de datos en un servicio con plan gratuito (p. ej. Render o Fly.io con PostgreSQL gestionado) |
 | IA-8 | Licencia | MIT |

@@ -264,6 +264,35 @@ class GameFinished(Event):
 
 
 @dataclass(frozen=True, slots=True)
+class GazeChanged(Event):
+    """Público: a quién mira cada jugador (``None`` = la mesa)."""
+
+    targets: tuple[SeatId | None, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class ClockTicked(Event):
+    """Público: ha pasado un momento por el reloj de la aplicación."""
+
+
+@dataclass(frozen=True, slots=True)
+class SignalMade(Event):
+    """PRIVATE a quien hace la seña: qué seña y quién le estaba mirando."""
+
+    seat: SeatId
+    signal: str
+    seen_by: tuple[SeatId, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class SignalSeen(Event):
+    """PRIVATE a cada jugador que estaba mirando a ``sender`` cuando hizo la seña."""
+
+    sender: SeatId
+    signal: str
+
+
+@dataclass(frozen=True, slots=True)
 class PhaseChanged(Event):
     """La máquina de estados ha entrado en ``phase`` (nombre de :class:`Phase`)."""
 
