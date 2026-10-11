@@ -32,3 +32,14 @@ def test_quick_start_runs(name: str) -> None:
     finally:
         signal.alarm(0)
         signal.signal(signal.SIGALRM, previous)
+
+
+def test_bot_tutorial_example_is_conformant() -> None:
+    from mus_engine.bots.conformance import check_bot
+
+    text = (ROOT / "docs" / "bots.md").read_text(encoding="utf-8")
+    match = re.search(r"Crea `src/mus_bots/mi_equipo.py`:\n\n```python\n(.*?)```", text, re.S)
+    assert match, "No se encuentra el bot del tutorial"
+    namespace: dict[str, object] = {}
+    exec(compile(match.group(1), "docs/bots.md", "exec"), namespace)
+    assert check_bot(namespace["Prudente"], games=2) == []  # type: ignore[arg-type]

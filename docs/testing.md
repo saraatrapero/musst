@@ -15,6 +15,7 @@ python -m pytest --cov=mus_engine --cov-report=term-missing
 | `tests/property/` | propiedades con Hypothesis: evaluadores frente a implementaciones de referencia, partidas aleatorias completas que siempre terminan, aceptada ⇔ legal, determinismo, ausencia de fugas |
 | `tests/regression/` | compatibilidad que no debe romperse: barajado de referencia, partida de referencia, determinismo entre procesos (`PYTHONHASHSEED`); y un test por cada bug encontrado |
 | `tests/integration/` | uso de `Game` de extremo a extremo con semilla; partidas completas cuando estén todos los lances |
+| `tests/bots/` | conformidad de todos los bots registrados (requisito 2.2), decisiones de los bots incluidos, registro y robustez del torneo con bots defectuosos (`faulty.py`) |
 | `tests/security/` | información privada (eventos visibles por jugador) e inmutabilidad |
 
 ## Cómo añadir un test
@@ -33,7 +34,7 @@ python -m pytest --cov=mus_engine --cov-report=term-missing
 - `mypy --strict` también sobre los tests.
 - Cobertura objetivo: 100 % en `cards/`, `rules/`, `betting/`, `scoring/`.
 - Tests acumulados: fase 1: 114; fase 2: 183; fase 3: 290; fase 4: 347; fase 5: 401;
-  fase 6: 455; fase 7: 504; fases 8–10: 639; final: 674; señas: 744. Cobertura 100 %.
+  fase 6: 455; fase 7: 504; fases 8–10: 639; final: 674; señas: 744; bots y torneo: 800. Cobertura 100 %.
 
 ## Utilidades
 

@@ -24,7 +24,9 @@ Motor completo: todas las fases del plan están implementadas y probadas.
 | Información privada | observaciones por lista blanca, eventos con visibilidad |
 | Replay | registro reconstruible desde los eventos, navegación por estados |
 | Señas | señas oficiales de la FEM, siempre verdaderas; sólo las ve quien mira al que las hace (opcional) |
-| Calidad | 744 tests (unitarios, reglas, integración, seguridad, propiedades, regresión), cobertura 100 %, ruff y mypy estricto |
+| Bots | API pública (`Bot.decide`), bots `aleatorio` y `sencillo`, comprobación automática de bots nuevos |
+| Torneo | todos contra todos, robusto ante bots que fallan, clasificación en Markdown y JSON |
+| Calidad | 800 tests (unitarios, reglas, integración, seguridad, propiedades, regresión), cobertura 100 %, ruff y mypy estricto |
 
 Desviación conocida respecto al reglamento: no se modelan las penalizaciones del
 postre que acepta un órdago con la jugada mínima (D-24a, `docs/rules.md`).
@@ -76,6 +78,14 @@ ruff check . && ruff format --check .
 python -m mypy                   # modo estricto sobre src/ y tests/
 ```
 
+## Bots y torneo
+
+```bash
+python -m mus_engine.arena --games 20 --seed 1   # torneo entre todos los bots registrados
+```
+
+Para escribir un bot, ver [`docs/bots.md`](docs/bots.md).
+
 ## Integración continua
 
 `.github/workflows/ci.yml` ejecuta en cada push a `main` y en cada pull request, con
@@ -92,6 +102,7 @@ batería de tests exigiendo cobertura del 100 %. La versión de `ruff` está fij
 - [`docs/state-machine.md`](docs/state-machine.md) — fases, validación y cómo añadir fases.
 - [`docs/scoring.md`](docs/scoring.md) — cuándo y cuánto se anota.
 - [`docs/api.md`](docs/api.md) — API pública.
+- [`docs/bots.md`](docs/bots.md) — tutorial: crear, probar y enviar un bot; torneo.
 - [`docs/testing.md`](docs/testing.md) — estrategia de tests y cómo añadir tests.
 
 ## Licencia

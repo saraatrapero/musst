@@ -28,12 +28,12 @@ Y lo que exige la práctica (apartado 5), con el estado actual:
 | 1.1 | Librería instalable, partida completa sin interfaz | 1,5 | ✅ `mus_engine` |
 | 1.2 | Interfaz web: una persona juega contra bots | 1,0 | pendiente |
 | 1.3 | Web publicada en URL pública | 0,5 | pendiente |
-| 2.1 | API pública de bots sin tocar el juego | 1,0 | pendiente |
-| 2.2 | Tests automáticos para bots nuevos | 0,5 | pendiente |
+| 2.1 | API pública de bots sin tocar el juego | 1,0 | ✅ `mus_engine.bots` |
+| 2.2 | Tests automáticos para bots nuevos | 0,5 | ✅ `check_bot` + CI |
 | 2.3 | Documentación online con referencia del API y tutorial | 0,5 | pendiente (hay docs en el repo, no publicadas) |
 | 3.1 | Bot propio (0,5 × dificultad 5 = 2,5 por bot) | — | pendiente |
 | 3.2 / 3.3 | Bots para/de otros equipos por PR | — | fuera de este diseño |
-| 4.1 | Torneo robusto (un bot que falla pierde, el torneo sigue) | 1,0 | pendiente |
+| 4.1 | Torneo robusto (un bot que falla pierde, el torneo sigue) | 1,0 | ✅ `mus_engine.arena` |
 | 4.2 | Clasificación publicada y actualizada automáticamente | 0,5 | pendiente |
 | C.1 | Repo ordenado: README, LICENSE, .gitignore | 0,5 | ✅ (MIT) |
 | C.2 | Ramas, PR y `main` protegida | 0,5 | falta proteger `main` (ajuste de GitHub, lo haces tú) |
@@ -351,7 +351,7 @@ de pasar a la siguiente.
 | Fase | Contenido | Requisito |
 |---|---|---|
 | A | Señas en el motor (C.VIII) ✅ | base de la IA |
-| B | API de bots, bots base (aleatorio y heurístico sencillo), tests de conformidad, torneo | 2.1, 2.2, 4.1, 3.1 |
+| B | API de bots, bots base (aleatorio y heurístico sencillo), tests de conformidad, torneo ✅ | 2.1, 2.2, 4.1, 3.1 |
 | C | Interfaz web (Streamlit): persona + bot compañero contra 2 bots; publicación | 1.2, 1.3 |
 | D | Fuerza de manos, CardCounting y ScoreAgent; bot **Medio** | 3.1 |
 | E | Perfiles de jugador y memoria persistente | 3.1 |
