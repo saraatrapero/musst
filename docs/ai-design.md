@@ -28,12 +28,12 @@ Y lo que exige la práctica (apartado 5), con el estado actual:
 | 1.1 | Librería instalable, partida completa sin interfaz | 1,5 | ✅ `mus_engine` |
 | 1.2 | Interfaz web: una persona juega contra bots | 1,0 | pendiente |
 | 1.3 | Web publicada en URL pública | 0,5 | pendiente |
-| 2.1 | API pública de bots sin tocar el juego | 1,0 | pendiente |
-| 2.2 | Tests automáticos para bots nuevos | 0,5 | pendiente |
+| 2.1 | API pública de bots sin tocar el juego | 1,0 | ✅ `mus_engine.bots` |
+| 2.2 | Tests automáticos para bots nuevos | 0,5 | ✅ `check_bot` + CI |
 | 2.3 | Documentación online con referencia del API y tutorial | 0,5 | pendiente (hay docs en el repo, no publicadas) |
 | 3.1 | Bot propio (0,5 × dificultad 5 = 2,5 por bot) | — | pendiente |
 | 3.2 / 3.3 | Bots para/de otros equipos por PR | — | fuera de este diseño |
-| 4.1 | Torneo robusto (un bot que falla pierde, el torneo sigue) | 1,0 | pendiente |
+| 4.1 | Torneo robusto (un bot que falla pierde, el torneo sigue) | 1,0 | ✅ `mus_engine.arena` |
 | 4.2 | Clasificación publicada y actualizada automáticamente | 0,5 | pendiente |
 | C.1 | Repo ordenado: README, LICENSE, .gitignore | 0,5 | ✅ (MIT) |
 | C.2 | Ramas, PR y `main` protegida | 0,5 | falta proteger `main` (ajuste de GitHub, lo haces tú) |
@@ -343,6 +343,47 @@ Al guardar datos personales:
 Las memorias de los bots (lo que aprenden jugando entre ellos o contra cualquiera) se
 guardan en la misma base de datos.
 
+## 5ter. Modos de juego, señas y avatares
+
+### Modos de juego
+
+Al crear una partida se elige:
+
+| Modo | Pareja 1 | Pareja 2 |
+|---|---|---|
+| Solo con bot | tú + bot compañero | 2 bots |
+| Pareja humana | 2 personas | 2 bots |
+| Cuatro personas | 2 personas | 2 personas (sin bots) |
+
+Y además, **con señas** o **sin señas** (IA-9). Sin señas es el juego del reglamento
+sin comunicación entre compañeros (`signals_enabled=False`, ya implementado).
+
+Cada asiento es una persona o un bot: el motor no distingue entre ellos. Las partidas
+con varias personas necesitan salas (crear, invitar, unirse) y conexión en tiempo real
+(WebSocket), dentro de la fase web.
+
+### Avatares (IA-10)
+
+- **Caricaturas divertidas** de personajes populares, con **apodo inventado**: por
+  ejemplo, una caricatura reconocible de una aristócrata televisiva se llama
+  "La Marquesa". Nunca se usa el nombre real ni el de ningún programa.
+- Cada jugador **elige su avatar** al registrarse o al empezar una partida; los bots
+  también tienen el suyo.
+- Cada avatar tiene **frases propias**, originales y en su estilo (no citas reales), que
+  dice en momentos de la partida: al echar un órdago, al ganar o perder un lance, al
+  ver una seña, al cortar el mus…
+- La personalidad del avatar de un bot coincide con su estilo de juego (p. ej. una
+  conservadora, un farolero, una arriesgada), así el jugador "lee" al rival también
+  por su personaje.
+- La cara de cada avatar se anima según las miradas del motor (§2.2): gira hacia el
+  compañero, un rival o la mesa.
+- Los avatares son un **paquete de datos** (imagen, apodo, frases, estilo) separado del
+  código: se pueden añadir o cambiar sin programar.
+- Criterios: tono amable (nada humillante ni de mal gusto), frases originales y un
+  aviso visible de que son parodias sin relación con las personas reales. La ley
+  permite la caricatura de personajes públicos "de acuerdo con el uso social"
+  (art. 8.2.b de la LO 1/1982).
+
 ## 6. Plan por fases
 
 Se mantiene el método anterior: implementación, tests, documentación y revisión antes
@@ -351,7 +392,7 @@ de pasar a la siguiente.
 | Fase | Contenido | Requisito |
 |---|---|---|
 | A | Señas en el motor (C.VIII) ✅ | base de la IA |
-| B | API de bots, bots base (aleatorio y heurístico sencillo), tests de conformidad, torneo | 2.1, 2.2, 4.1, 3.1 |
+| B | API de bots, bots base (aleatorio y heurístico sencillo), tests de conformidad, torneo ✅ | 2.1, 2.2, 4.1, 3.1 |
 | C | Interfaz web (Streamlit): persona + bot compañero contra 2 bots; publicación | 1.2, 1.3 |
 | D | Fuerza de manos, CardCounting y ScoreAgent; bot **Medio** | 3.1 |
 | E | Perfiles de jugador y memoria persistente | 3.1 |
@@ -383,3 +424,6 @@ Aprobadas:
 | IA-6 | Web: FastAPI + JavaScript + PostgreSQL |
 | IA-7 | Alojamiento en un servicio con plan gratuito (se concreta en la fase web) |
 | IA-8 | Licencia MIT |
+| IA-9 | Cada partida se juega con o sin señas, a elección |
+| IA-10 | Avatares: caricaturas divertidas con apodo inventado, elegibles, con frases originales (§5ter) |
+| IA-11 | Modos: tú + bot contra 2 bots, 2 personas contra 2 bots, 4 personas (§5ter) |
