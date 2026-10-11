@@ -21,6 +21,7 @@ from mus_engine import (
 )
 from mus_engine.errors import IllegalActionError, InvariantViolationError
 from mus_engine.events import CardsDealt
+from mus_engine.game.actions import ClockTick
 from mus_engine.game.legal import NO_ACTIONS
 from mus_engine.players import ALL_SEATS
 
@@ -127,7 +128,9 @@ def test_tampered_record_is_rejected_by_the_engine() -> None:
     game = started_game()
     game.apply_action(game.mano, MusAction())
     record = game.record
-    tampered = dataclasses.replace(record, actions=((record.actions[0][0], PassAction()),))
+    first = record.actions[0]
+    assert not isinstance(first, ClockTick)
+    tampered = dataclasses.replace(record, actions=((first[0], PassAction()),))
     with pytest.raises(IllegalActionError):
         GameReplay(tampered)
 
@@ -163,6 +166,8 @@ def test_replay_with_discards_and_ordago() -> None:
     assert game.is_finished
     record = GameRecord.from_events(game.event_log)
     assert record == game.record
-    discards = [a for _, a in record.actions if isinstance(a, DiscardAction)]
+    discards = [
+        e[1] for e in record.actions if isinstance(e, tuple) and isinstance(e[1], DiscardAction)
+    ]
     assert [len(d.cards) for d in discards] == [2] * 4 + [4] * 4
     assert GameReplay.from_events(game.event_log).jump_to(len(record.actions)) == game.get_state()

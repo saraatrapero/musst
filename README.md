@@ -23,7 +23,8 @@ Motor completo: todas las fases del plan están implementadas y probadas.
 | Tanteo | orden reglamentario, final de juego a mitad de jugada, partida a N juegos |
 | Información privada | observaciones por lista blanca, eventos con visibilidad |
 | Replay | registro reconstruible desde los eventos, navegación por estados |
-| Calidad | 674 tests (unitarios, reglas, integración, seguridad, propiedades, regresión), cobertura 100 %, ruff y mypy estricto |
+| Señas | señas oficiales de la FEM, siempre verdaderas; sólo las ve quien mira al que las hace (opcional) |
+| Calidad | 744 tests (unitarios, reglas, integración, seguridad, propiedades, regresión), cobertura 100 %, ruff y mypy estricto |
 
 Desviación conocida respecto al reglamento: no se modelan las penalizaciones del
 postre que acepta un órdago con la jugada mínima (D-24a, `docs/rules.md`).
@@ -86,8 +87,13 @@ batería de tests exigiendo cobertura del 100 %. La versión de `ruff` está fij
 
 - [`docs/architecture.md`](docs/architecture.md) — arquitectura final, módulos, flujo de una acción.
 - [`docs/design.md`](docs/design.md) — diseño inicial aprobado y plan por fases.
+- [`docs/ai-design.md`](docs/ai-design.md) — propuesta de IA multiagente y plataforma de bots (en revisión).
 - [`docs/rules.md`](docs/rules.md) — trazabilidad con el reglamento y decisiones aprobadas.
 - [`docs/state-machine.md`](docs/state-machine.md) — fases, validación y cómo añadir fases.
 - [`docs/scoring.md`](docs/scoring.md) — cuándo y cuánto se anota.
 - [`docs/api.md`](docs/api.md) — API pública.
 - [`docs/testing.md`](docs/testing.md) — estrategia de tests y cómo añadir tests.
+
+## Licencia
+
+[MIT](LICENSE).

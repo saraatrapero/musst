@@ -30,6 +30,7 @@ from mus_engine.game.phases import Phase
 from mus_engine.game.state import GameState
 from mus_engine.players.seating import SeatId, TeamId
 from mus_engine.rules.lance import LanceType
+from mus_engine.rules.signals import Signal
 from mus_engine.scoring.score import GameScore
 from mus_engine.scoring.scoring import LanceOutcome
 
@@ -87,6 +88,9 @@ class Observation:
     revealed_hands: tuple[tuple[Card, ...], ...] | None
     legal_actions: LegalActions
     events: tuple[EventEnvelope, ...]
+    gaze: tuple[SeatId | None, ...] | None = None  # a quién mira cada uno (público)
+    signals_seen: tuple[tuple[SeatId, Signal], ...] = ()  # señas que he visto en la jugada
+    my_signals: tuple[tuple[Signal, tuple[SeatId, ...]], ...] = ()  # mis señas y quién las vio
 
     @property
     def is_my_turn(self) -> bool:
@@ -132,4 +136,11 @@ def build_observation(
         revealed_hands=hand.hands if hand is not None and hand.revealed else None,
         legal_actions=legal_actions,
         events=tuple(e for e in events if e.visible_to(seat)),
+        gaze=None if state.gaze is None else state.gaze.targets,
+        signals_seen=()
+        if hand is None
+        else tuple((r.sender, r.signal) for r in hand.signals if seat in r.seen_by),
+        my_signals=()
+        if hand is None
+        else tuple((r.signal, r.seen_by) for r in hand.signals if r.sender == seat),
     )

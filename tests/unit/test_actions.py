@@ -73,3 +73,13 @@ def test_discard_action_rejects_non_cards(bad: object) -> None:
 def test_empty_discard_is_constructible_but_engine_decides() -> None:
     # La forma es válida; el número mínimo de naipes lo valida el motor (D-13).
     assert DiscardAction([]).cards == frozenset()
+
+
+def test_signal_action_requires_a_signal() -> None:
+    from mus_engine.errors import IllegalActionError
+    from mus_engine.game.actions import SignalAction
+    from mus_engine.rules.signals import Signal
+
+    assert SignalAction(Signal.DUPLES).signal is Signal.DUPLES
+    with pytest.raises(IllegalActionError, match="desconocida"):
+        SignalAction("duples")  # type: ignore[arg-type]

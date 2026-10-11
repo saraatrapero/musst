@@ -21,20 +21,24 @@ from mus_engine.errors import (
     PrivateInformationError,
 )
 from mus_engine.events.events import (
+    ClockTicked,
     Emission,
     EventEnvelope,
     GameStarted,
+    GazeChanged,
     HandStarted,
     RngSeeded,
     Visibility,
 )
 from mus_engine.game import invariants, machine
-from mus_engine.game.actions import Action
+from mus_engine.game.actions import Action, ClockTick
 from mus_engine.game.flow import run_automatic
+from mus_engine.game.gaze import initial_gaze
 from mus_engine.game.legal import LegalActions
 from mus_engine.game.observations import Observation, build_observation
 from mus_engine.game.phases import Phase
-from mus_engine.game.record import GameRecord
+from mus_engine.game.record import GameRecord, RecordEntry
+from mus_engine.game.signals import tick as tick_signals
 from mus_engine.game.state import GameState
 from mus_engine.game.transition import enter
 from mus_engine.players import seating
@@ -71,7 +75,7 @@ class Game:
             raise InvalidConfigError(f"La semilla debe ser un entero: {seed!r}")
         self._state = GameState(config=config, table=table, rng=Rng(seed))
         self._log: list[EventEnvelope] = []
-        self._actions: list[tuple[SeatId, Action]] = []
+        self._actions: list[RecordEntry] = []
 
     # --- Acciones -------------------------------------------------------------------
 
@@ -84,6 +88,10 @@ class Game:
             Emission.engine(RngSeeded(state.rng.seed)),
             Emission.public(GameStarted(state.table.names, state.config)),
         )
+        if state.config.signals_enabled:
+            gaze, rng = initial_gaze(state.config, state.rng)
+            state = state.evolve(gaze=gaze, rng=rng)
+            emitted += (Emission.public(GazeChanged(gaze.targets)),)
         state, entered = enter(state, Phase.CHOOSE_FIRST_DEALER)
         state, automatic = run_automatic(state)
         new = self._commit(state, emitted + entered + automatic)
@@ -101,6 +109,19 @@ class Game:
         new = self._commit(state, emitted)
         self._actions.append((player, action))
         return tuple(e for e in new if e.visible_to(player))
+
+    def tick(self) -> tuple[EventEnvelope, ...]:
+        """Pasa un momento por el reloj de la aplicación: avanzan las miradas.
+
+        Sólo tiene sentido con señas activadas. Devuelve los eventos públicos.
+        """
+        self._require_in_progress()
+        if not self._state.config.signals_enabled:
+            raise InvalidStateError("El reloj sólo se usa con señas activadas")
+        state, emitted = tick_signals(self._state)
+        new = self._commit(state, (Emission.public(ClockTicked()), *emitted))
+        self._actions.append(ClockTick())
+        return tuple(e for e in new if e.visibility is Visibility.PUBLIC)
 
     # --- Consultas ------------------------------------------------------------------
 

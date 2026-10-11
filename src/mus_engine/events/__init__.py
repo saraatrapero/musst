@@ -7,6 +7,7 @@ from mus_engine.events.events import (
     BetRejected,
     CardsDealt,
     CardsDiscarded,
+    ClockTicked,
     DeckShuffled,
     DiscardDeclared,
     DiscardPileReshuffled,
@@ -18,6 +19,7 @@ from mus_engine.events.events import (
     GameFinished,
     GameStarted,
     GameWon,
+    GazeChanged,
     HandsRevealed,
     HandStarted,
     JuegoDeclared,
@@ -35,6 +37,8 @@ from mus_engine.events.events import (
     PhaseChanged,
     PointsAwarded,
     RngSeeded,
+    SignalMade,
+    SignalSeen,
     Visibility,
 )
 
@@ -45,6 +49,7 @@ __all__ = [
     "BetRejected",
     "CardsDealt",
     "CardsDiscarded",
+    "ClockTicked",
     "DeckShuffled",
     "DiscardDeclared",
     "DiscardPileReshuffled",
@@ -56,6 +61,7 @@ __all__ = [
     "GameFinished",
     "GameStarted",
     "GameWon",
+    "GazeChanged",
     "HandStarted",
     "HandsRevealed",
     "JuegoDeclared",
@@ -73,5 +79,7 @@ __all__ = [
     "PhaseChanged",
     "PointsAwarded",
     "RngSeeded",
+    "SignalMade",
+    "SignalSeen",
     "Visibility",
 ]

@@ -60,6 +60,15 @@ class GameConfig:
     first_shuffler: int = 0
     first_dealer: int | None = None
 
+    # Señas y miradas (C.VIII; IA-1, IA-2). Desactivadas: el juego es el del reglamento
+    # sin comunicación entre compañeros.
+    signals_enabled: bool = False
+    gaze_partner_weight: int = 30  # pesos relativos de hacia dónde mira cada jugador
+    gaze_rival_weight: int = 15  # (a cada rival)
+    gaze_table_weight: int = 40
+    gaze_min_ticks: int = 1  # duración de cada mirada, en momentos
+    gaze_max_ticks: int = 3
+
     # Representación del marcador (D-19). No afecta a las reglas.
     tantos_per_amarraco: int = 5
 
@@ -100,6 +109,18 @@ class GameConfig:
             raise InvalidConfigError(
                 f"first_dealer debe ser None o un asiento 0..3: {self.first_dealer!r}"
             )
+        for name in ("gaze_partner_weight", "gaze_rival_weight", "gaze_table_weight"):
+            value = getattr(self, name)
+            if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+                raise InvalidConfigError(f"{name} debe ser un entero >= 0 (recibido {value!r})")
+        if self.gaze_partner_weight + 2 * self.gaze_rival_weight + self.gaze_table_weight == 0:
+            raise InvalidConfigError("Los pesos de las miradas no pueden ser todos cero")
+        for name in ("gaze_min_ticks", "gaze_max_ticks"):
+            value = getattr(self, name)
+            if not isinstance(value, int) or isinstance(value, bool) or value < 1:
+                raise InvalidConfigError(f"{name} debe ser un entero >= 1 (recibido {value!r})")
+        if self.gaze_min_ticks > self.gaze_max_ticks:
+            raise InvalidConfigError("gaze_min_ticks no puede superar gaze_max_ticks")
         if self.cards_per_hand != 4:
             raise InvalidConfigError("El Mus se juega con 4 naipes por jugador")
         if self.max_discard > self.cards_per_hand:

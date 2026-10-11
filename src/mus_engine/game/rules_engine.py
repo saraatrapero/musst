@@ -30,9 +30,7 @@ class RulesEngine:
     @staticmethod
     def is_legal(state: GameState, player_id: int, action: Action) -> bool:
         player = seating.seat(player_id)
-        return player in machine.actors(state) and machine.legal_actions(state, player).contains(
-            action
-        )
+        return machine.legal_actions(state, player).contains(action)
 
     @staticmethod
     def validate(state: GameState, player_id: int, action: Action) -> None:

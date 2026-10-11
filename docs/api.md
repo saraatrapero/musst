@@ -371,3 +371,32 @@ replay.events(viewer), replay.observation(viewer)
 RulesEngine.legal_actions(state, player)
 RulesEngine.apply(state, player, action)  # -> (nuevo estado, eventos); no toca ninguna partida
 ```
+
+## Señas y miradas
+
+```python
+from mus_engine import Game, GameConfig
+from mus_engine.game.actions import SignalAction
+from mus_engine.rules.signals import Signal
+
+game = Game(config=GameConfig(signals_enabled=True), seed=1)
+game.start()
+# ... tras cortar el mus:
+legal = game.get_legal_actions(seat)  # incluye SignalAction(...) verdaderas, tenga o no el turno
+game.apply_action(seat, SignalAction(Signal.DUPLES))  # no consume el turno
+game.tick()  # el reloj de la aplicación: avanzan las miradas
+
+obs = game.get_observation(seat)
+obs.gaze  # a quién mira cada jugador (None = la mesa); público
+obs.signals_seen  # ((emisor, seña), ...) que este jugador ha visto en la jugada
+obs.my_signals  # ((seña, quién la vio), ...)
+```
+
+- Señas: `DOS_REYES`, `DOS_ASES`, `PARES`, `MEDIAS_REYES`, `MEDIAS_ASES`, `MEDIAS`,
+  `DUPLES`, `JUEGO`, `TREINTA_Y_UNA`, `TREINTA`, `VEINTINUEVE`, `CIEGO`.
+- Una seña falsa, parcial, repetida o fuera de su momento lanza `IllegalActionError`;
+  antes del corte o con señas desactivadas, `InvalidStateError`.
+- Parámetros de miradas en `GameConfig`: `gaze_partner_weight`, `gaze_rival_weight`,
+  `gaze_table_weight`, `gaze_min_ticks`, `gaze_max_ticks`.
+- El registro (`GameRecord`) incluye señas y pasos del reloj (`ClockTick`) y se sigue
+  reconstruyendo sólo a partir de los eventos.

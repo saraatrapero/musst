@@ -58,3 +58,19 @@ def test_custom_target_score() -> None:
 def test_invalid_configs_are_rejected(kwargs: dict[str, object]) -> None:
     with pytest.raises(InvalidConfigError):
         GameConfig(**kwargs)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"gaze_partner_weight": -1},
+        {"gaze_rival_weight": True},
+        {"gaze_partner_weight": 0, "gaze_rival_weight": 0, "gaze_table_weight": 0},
+        {"gaze_min_ticks": 0},
+        {"gaze_max_ticks": "3"},
+        {"gaze_min_ticks": 4, "gaze_max_ticks": 3},
+    ],
+)
+def test_invalid_gaze_configs(kwargs: dict[str, object]) -> None:
+    with pytest.raises(InvalidConfigError):
+        GameConfig(signals_enabled=True, **kwargs)  # type: ignore[arg-type]

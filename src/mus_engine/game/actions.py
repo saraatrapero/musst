@@ -11,7 +11,8 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 
 from mus_engine.cards.card import Card
-from mus_engine.errors import InvalidBetError, InvalidDiscardError
+from mus_engine.errors import IllegalActionError, InvalidBetError, InvalidDiscardError
+from mus_engine.rules.signals import Signal
 
 
 @dataclass(frozen=True, slots=True)
@@ -90,3 +91,19 @@ class OrdagoAction(Action):
 def _check_amount(amount: object) -> None:
     if not isinstance(amount, int) or isinstance(amount, bool) or amount < 1:
         raise InvalidBetError(f"El importe debe ser un entero positivo: {amount!r}")
+
+
+@dataclass(frozen=True, slots=True)
+class SignalAction(Action):
+    """Hacer una seña al compañero (C.VIII). Sólo verdaderas; no consume el turno."""
+
+    signal: Signal
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.signal, Signal):
+            raise IllegalActionError(f"Seña desconocida: {self.signal!r}")
+
+
+@dataclass(frozen=True, slots=True)
+class ClockTick:
+    """Paso del tiempo (reloj de la aplicación). No es una acción de jugador."""
