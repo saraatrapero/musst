@@ -23,7 +23,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: pip
       - name: Instalar
-        run: python -m pip install -e ".[dev]"
+        run: python -m pip install -e ".[dev,web]"
       - name: Lint (ruff)
         run: |
           ruff check .
@@ -31,4 +31,4 @@ jobs:
       - name: Tipos (mypy estricto)
         run: python -m mypy
       - name: Tests con cobertura
-        run: python -m pytest --cov=mus_engine --cov=mus_bots --cov-report=term-missing --cov-fail-under=100
+        run: python -m pytest --cov=mus_engine --cov=mus_bots --cov=mus_web --cov-report=term-missing --cov-fail-under=100
