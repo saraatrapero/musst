@@ -65,36 +65,59 @@ inferencia de cartas.
 
 ---
 
-## 2. Señas (ampliación del motor)
+## 2. Señas y miradas (ampliación del motor)
 
-Hoy las señas están fuera del motor (`docs/rules.md` §3). Para tu idea hay que
-modelarlas, y el reglamento las regula con detalle (C.VIII):
+Hoy las señas están fuera del motor (`docs/rules.md` §3). Se añaden siguiendo el
+capítulo VIII del reglamento y un **modelo de miradas** (decisión IA-2).
+
+### 2.1 Qué señas existen y cuándo son legales
 
 | Regla | Cita | Cómo se modela |
 |---|---|---|
-| Sólo las señas oficiales | C.VIII-1, C.VIII-2 | `Sena` enum: dos reyes, dos ases, pares, medias de reyes, medias de ases, medias, duples, juego, treinta y una, treinta, veintinueve, ciego, cortar el mus, envidar más |
-| No antes de cortar el mus | C.VIII-3 | sólo en fases posteriores al corte |
-| Sólo para transmitir la jugada que se tiene | C.VIII-4 | **el motor sólo permite señas verdaderas** (no se puede mentir) |
-| Medias que no sean de reyes, después de grande; treinta, tras "juego no" | C.VIII-5, C.VIII-2 | restricciones de momento |
-| Nada de señas parciales | C.VIII-6 | duples se señalan como duples |
-| El rival no está obligado a confirmar | C.VIII-7 | la seña vista no da certeza de nada más |
+| Sólo las señas oficiales | C.VIII-1, C.VIII-2 | `Sena`: dos reyes, dos ases, pares, medias de reyes, medias de ases, medias, duples, juego, treinta y una, treinta, veintinueve, ciego |
+| Sólo para transmitir la jugada que se tiene; prohibido señar para preguntar o decidir | C.VIII-4 | **sólo señas verdaderas** (IA-1): el motor rechaza una seña que no corresponda a la mano |
+| No antes de cortar el mus | C.VIII-3 | sólo después del corte (S-2) |
+| Medias que no sean de reyes, después de grande | C.VIII-2, C.VIII-5 | restricción de momento |
+| Treinta, cuando los cuatro han dicho "juego no" | C.VIII-2, C.VIII-5 | sólo si nadie tiene juego, tras la declaración |
+| Juego no vale para la treinta y una | C.VIII-2 | `JUEGO` = juego distinto de 31 |
+| Ciego no se pasa si hay jugada con seña propia | C.VIII-2 | `CIEGO` sólo si ninguna otra seña es verdadera |
+| Nada de señas parciales | C.VIII-6 | con duples no se puede señar "dos reyes" ni "dos ases" |
+| El rival no está obligado a confirmar | C.VIII-7 | ver una seña no da más información que la propia seña |
 
-**Ver o no ver la seña** (tu regla de ventaja):
+Cada jugador puede hacer cada seña una vez por jugada.
 
-- `SenaAction(sena)` la puede hacer cualquier jugador, no sólo el que tiene el turno,
-  una vez por seña y jugada.
-- El motor decide con su generador determinista si **el compañero la ve**
-  (probabilidad `p_ver`) y si **cada rival la intercepta** (probabilidad
-  `p_interceptar`), según parámetros de configuración (habilidad para disimular y
-  atención de cada jugador).
-- Resultado en eventos **privados**: el compañero recibe `SenaVista`; el rival que la
-  intercepta recibe `SenaInterceptada`. Quien hace la seña **no sabe** quién la ha visto.
-- Para personas en la web: botón "hacer seña" y aviso cuando ves una.
+### 2.2 Miradas: quién ve la seña
 
-Esto mantiene todas las garantías del motor: determinista, legal si y sólo si figura
-en las acciones legales, sin fugas.
+- En cada momento, cada jugador **mira a alguien**: a su compañero, a uno de los rivales
+  o a la mesa. Cada mirada dura unos instantes y cambia al azar (generador determinista
+  del motor, así que todo sigue siendo reproducible).
+- **Hacia dónde mira cada uno es público**, como en una mesa real: los avatares lo
+  muestran girando la cara.
+- Una seña de S la ven **exactamente los jugadores que en ese momento están mirando
+  a S**:
+  - si la ve el compañero, juega con ventaja;
+  - si la ve un rival, la ventaja es para el rival;
+  - si no la ve nadie, se pierde.
+- Quien hace la seña sabe quién le estaba mirando, así que sabe quién la ha visto.
+- El tiempo avanza con cada acción y, en la web, también con el reloj: los avatares
+  sostienen la mirada unos segundos.
+- Parámetros configurables (los niveles de bot los usarán): con qué frecuencia y
+  cuánto tiempo mira cada jugador a su compañero, a los rivales y a la mesa.
 
----
+Eventos: `MiradasCambiadas` (público), `SenaVista` (privado, sólo a quien la ve) y
+`SenaHecha` (privado, al que la hace, con quién la vio).
+
+Con señas desactivadas (valor por defecto) el juego es exactamente el actual: ningún
+test ni partida de referencia cambia.
+
+### 2.3 Ambigüedades del reglamento sobre señas
+
+| ID | Duda | Propuesta |
+|---|---|---|
+| S-1 | C.VIII-2 incluye "cortar el mus" y "envidar más", pero C.VIII-4 prohíbe señar para tomar decisiones y C.VIII-3 no permite señas antes del corte | **no se implementan** esas dos señas |
+| S-2 | C.VIII-3 dice "al comenzar la partida": ¿sólo la primera jugada o todas? | en todas las jugadas, sólo tras el corte |
+| S-3 | "Dos reyes" con tres reyes, o "pares" con dos reyes | "dos reyes" = pareja exacta de reyes; con tres reyes se seña medias de reyes; "pares" vale para cualquier pareja |
+| S-4 | Veintinueve: el reglamento no fija el momento | como treinta: sólo cuando nadie tiene juego |
 
 ## 3. Arquitectura multiagente
 
@@ -201,12 +224,15 @@ Además se añade un parámetro de apetito de riesgo por nivel de bot.
 
 ### 3.5 SignalAgent: señas
 
-- **Cuándo señar**: compara la ventaja de que el compañero sepa mi jugada con el riesgo
-  de que me la intercepten (según la atención observada de cada rival).
+- **Cuándo señar**: espera al momento en que el compañero le mira y los rivales no
+  (las miradas son públicas), y compara la ventaja de que el compañero sepa su jugada
+  con el riesgo de que algún rival se gire a tiempo.
+- **Cuándo mirar**: decide si vigilar al compañero (recibir sus señas) o a los rivales
+  (interceptar las suyas). En los niveles superiores esto forma parte de la estrategia.
 - **Leer al compañero**: incorpora sus señas vistas a la inferencia (son verdad por
   reglamento).
 - **Aprovechar intercepciones**: una seña rival interceptada es información cierta.
-- Aprende la tasa real de intercepción de cada rival.
+- Aprende con qué frecuencia mira cada rival a cada jugador.
 
 ### 3.6 EquityAgent: decidir
 
@@ -283,6 +309,39 @@ class MiBot(Bot):
 
 ---
 
+## 5bis. Aplicación web, usuarios y datos
+
+Decisión IA-3: **los usuarios se registran y se guardan todos sus datos**; lo aprendido
+de cada persona vive en su cuenta.
+
+Consecuencia de diseño: **el motor tiene que ejecutarse en un servidor**. Si corriera
+en el navegador, las manos de todos estarían en la memoria del navegador y cualquiera
+podría verlas con las herramientas del desarrollador (requisito 5.1.1 de la práctica:
+no revelar información secreta).
+
+```text
+Navegador (JS)                     Servidor (Python)                     Base de datos
+mesa, avatares, miradas  ◄──WS──►  FastAPI: cuentas, partidas,     ◄──►  PostgreSQL
+sólo recibe su observación         mus_engine, bots, aprendizaje          usuarios, partidas,
+                                                                          perfiles, memoria IA
+```
+
+Qué se guarda por usuario:
+
+- cuenta: nombre de usuario, contraseña con hash (nunca en claro), fecha de alta;
+- partidas completas (registro de eventos, que permite el replay);
+- perfil de juego calculado por la IA y su evolución;
+- estadísticas (victorias, lances, envites…).
+
+Al guardar datos personales:
+
+- pedir los mínimos;
+- consentimiento al registrarse;
+- opción de borrar la cuenta y todos sus datos.
+
+Las memorias de los bots (lo que aprenden jugando entre ellos o contra cualquiera) se
+guardan en la misma base de datos.
+
 ## 6. Plan por fases
 
 Se mantiene el método anterior: implementación, tests, documentación y revisión antes
@@ -305,15 +364,23 @@ entrega) pide las secciones 1 y 2.
 
 ---
 
-## 7. Decisiones que necesito
+## 7. Decisiones
+
+Aprobadas:
+
+| ID | Decisión |
+|---|---|
+| IA-1 | Señas siempre verdaderas (C.VIII-4) |
+| IA-2 | Quién ve una seña depende de las miradas de los avatares (§2.2), no de probabilidades fijas |
+| IA-3 | Usuarios registrados; todos sus datos y lo aprendido se guardan en base de datos (§5bis) |
+| IA-4 | Orden de fases: señas → API de bots y torneo → web → agentes |
+| IA-5 | "Piedras" = tantos; amarraco = 5 tantos (D-19) |
+
+Pendientes:
 
 | ID | Pregunta | Propuesta |
 |---|---|---|
-| IA-1 | ¿Las señas siempre verdaderas (C.VIII-4) o se permite señar en falso como farol? | Verdaderas, como dice el reglamento |
-| IA-2 | Probabilidades por defecto de ver e interceptar una seña | compañero 80 %, cada rival 15 %; ajustables por jugador |
-| IA-3 | ¿Dónde se guarda lo aprendido? | archivos JSON versionados por bot en `data/` (fáciles de inspeccionar en la defensa) |
-| IA-4 | ¿La memoria de un bot se reinicia en cada torneo? | No: es lo que demuestra el aprendizaje; el torneo oficial se repite también "sin memoria" para comparar |
-| IA-5 | "Piedras" | = tantos; amarraco = 5 tantos (D-19) |
-| IA-6 | Interfaz web | Streamlit (todo en Python, recomendado en la práctica) |
-| IA-7 | Orden de fases | A → B → C → D … (checkpoint primero) |
-| IA-8 | Licencia del repositorio | MIT |
+| S-1 … S-4 | Ambigüedades de señas (§2.3) | las propuestas de la tabla |
+| IA-6 | Tecnología web | FastAPI + JavaScript + PostgreSQL (la animación de avatares en tiempo real no encaja bien en Streamlit) |
+| IA-7 | Alojamiento | servidor y base de datos en un servicio con plan gratuito (p. ej. Render o Fly.io con PostgreSQL gestionado) |
+| IA-8 | Licencia | MIT |
