@@ -227,8 +227,8 @@ Además se añade un parámetro de apetito de riesgo por nivel de bot.
 - **Cuándo señar**: espera al momento en que el compañero le mira y los rivales no
   (las miradas son públicas), y compara la ventaja de que el compañero sepa su jugada
   con el riesgo de que algún rival se gire a tiempo.
-- **Cuándo mirar**: decide si vigilar al compañero (recibir sus señas) o a los rivales
-  (interceptar las suyas). En los niveles superiores esto forma parte de la estrategia.
+- Las miradas son aleatorias (IA-2): el agente no elige dónde mirar, pero sí aprovecha
+  el momento en que le miran.
 - **Leer al compañero**: incorpora sus señas vistas a la inferencia (son verdad por
   reglamento).
 - **Aprovechar intercepciones**: una seña rival interceptada es información cierta.
