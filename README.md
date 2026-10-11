@@ -86,6 +86,7 @@ batería de tests exigiendo cobertura del 100 %. La versión de `ruff` está fij
 
 - [`docs/architecture.md`](docs/architecture.md) — arquitectura final, módulos, flujo de una acción.
 - [`docs/design.md`](docs/design.md) — diseño inicial aprobado y plan por fases.
+- [`docs/ai-design.md`](docs/ai-design.md) — propuesta de IA multiagente y plataforma de bots (en revisión).
 - [`docs/rules.md`](docs/rules.md) — trazabilidad con el reglamento y decisiones aprobadas.
 - [`docs/state-machine.md`](docs/state-machine.md) — fases, validación y cómo añadir fases.
 - [`docs/scoring.md`](docs/scoring.md) — cuándo y cuánto se anota.
