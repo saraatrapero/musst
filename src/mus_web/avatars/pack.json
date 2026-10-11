@@ -1,0 +1,125 @@
+{
+  "aviso": "Personajes de parodia con apodos inventados. Cualquier parecido con personas reales es una caricatura humorística sin relación con ellas.",
+  "avatars": [
+    {
+      "id": "marquesa",
+      "nickname": "La Marquesa",
+      "style": "conservadora",
+      "color": "#b5838d",
+      "phrases": {
+        "corta_mus": ["Yo con esto no me levanto de la silla.", "Corto, que tengo una merienda."],
+        "pasa": ["Ay, no, qué horror, eso no se envida.", "Paso, querida, paso."],
+        "envida": ["Envido dos, que una tiene un nombre que cuidar.", "Envido, pero con mucha clase."],
+        "ordago": ["Órdago… y que conste que no es lo mío."],
+        "rechaza": ["No quiero, gracias. Muy amable."],
+        "gana_lance": ["Lo sabía, la elegancia siempre gana."],
+        "pierde_lance": ["Esto en palacio no pasaba."],
+        "gana_partida": ["Qué partida tan divina."],
+        "pierde_partida": ["Me voy a tomar un té, que lo necesito."]
+      }
+    },
+    {
+      "id": "tentador",
+      "nickname": "El Tentador",
+      "style": "farolero",
+      "color": "#e07a5f",
+      "phrases": {
+        "pide_mus": ["Mus… ¿te atreves?"],
+        "envida": ["¿Quieres o no quieres? Mírame a los ojos.", "Envido, y no te digo más."],
+        "ordago": ["Lo que pasa en esta mesa, se queda en esta mesa."],
+        "acepta": ["Quiero. Me gustan los retos."],
+        "gana_lance": ["Nunca enseñes las cartas a la primera cita."],
+        "pierde_lance": ["Me habéis pillado, pero qué bien lo he pasado."],
+        "gana_partida": ["Ya os dije que era irresistible."],
+        "pierde_partida": ["Mañana me tocará a mí."]
+      }
+    },
+    {
+      "id": "superviviente",
+      "nickname": "La Superviviente",
+      "style": "arriesgada",
+      "color": "#81b29a",
+      "phrases": {
+        "envida": ["Envido, que aquí se viene a sobrevivir."],
+        "ordago": ["¡Órdago! De peores islas he salido."],
+        "acepta": ["Quiero. Con hambre se juega mejor."],
+        "gana_lance": ["¡Otra prueba de recompensa para mí!"],
+        "pierde_lance": ["Me voy a la palapa a pensar."],
+        "gana_partida": ["¡Sobreviví!"],
+        "pierde_partida": ["Me nominan, pero vuelvo."]
+      }
+    },
+    {
+      "id": "tronista",
+      "nickname": "El Tronista",
+      "style": "imprevisible",
+      "color": "#3d405b",
+      "phrases": {
+        "pide_mus": ["¿Mus? Depende de cómo me mires."],
+        "corta_mus": ["Corto. Hoy vengo a por todas… o a por ninguna."],
+        "envida": ["Envido cinco, por la cara."],
+        "gana_lance": ["Ya sabía yo que esta mano tenía química."],
+        "pierde_lance": ["No era mi tipo de carta."],
+        "gana_partida": ["Elijo… ¡la victoria!"],
+        "pierde_partida": ["Me voy sin elegir a nadie."]
+      }
+    },
+    {
+      "id": "abuela",
+      "nickname": "La Abuela del Mus",
+      "style": "equilibrada",
+      "color": "#f2cc8f",
+      "phrases": {
+        "revela_31": ["Treinta y una, como Dios manda."],
+        "rechaza": ["Eso lo has echado con el corazón, no con la cabeza."],
+        "pasa": ["Paso, hijo, que tengo paciencia."],
+        "gana_lance": ["La veteranía es un grado."],
+        "pierde_lance": ["Bueno, alguna te tenía que dejar."],
+        "gana_partida": ["Esto ya lo jugaba yo de jovencita."],
+        "pierde_partida": ["Muy bien, cariño, así se aprende."]
+      }
+    },
+    {
+      "id": "verbena",
+      "nickname": "El Cantante de Verbena",
+      "style": "agresivo",
+      "color": "#f4a261",
+      "phrases": {
+        "envida": ["¡Que suene la orquesta, que envido!"],
+        "ordago": ["¡Órdago y todos a bailar!"],
+        "gana_lance": ["Esta mano ha sido un temazo."],
+        "pierde_lance": ["Me he desafinado un poco."],
+        "gana_partida": ["¡Y otra, y otra, y otra!"],
+        "pierde_partida": ["Se acabó la verbena."]
+      }
+    },
+    {
+      "id": "presentador",
+      "nickname": "El Presentador",
+      "style": "cauto",
+      "color": "#2a9d8f",
+      "phrases": {
+        "pide_mus": ["Y en el próximo lance… ¡sorpresa!"],
+        "pasa": ["Lo dejamos aquí, nos vemos después de la publicidad."],
+        "gana_lance": ["Ha sido una gala inolvidable."],
+        "pierde_lance": ["Queda expulsado… pero solo de este lance."],
+        "gana_partida": ["¡Y el ganador de esta edición es…!"],
+        "pierde_partida": ["Gracias por vernos, buenas noches."]
+      }
+    },
+    {
+      "id": "influencer",
+      "nickname": "La Influencer",
+      "style": "experta en señas",
+      "color": "#c77dff",
+      "phrases": {
+        "corta_mus": ["Corto, que se me enfría el café."],
+        "revela_31": ["Hashtag treinta y una."],
+        "gana_lance": ["Esto lo subo a stories."],
+        "pierde_lance": ["Esta mano no sale en mis fotos."],
+        "gana_partida": ["Hoy tengo el algoritmo de cara."],
+        "pierde_partida": ["Me desconecto un ratito."]
+      }
+    }
+  ]
+}
