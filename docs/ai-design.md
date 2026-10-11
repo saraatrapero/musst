@@ -35,7 +35,7 @@ Y lo que exige la práctica (apartado 5), con el estado actual:
 | 3.2 / 3.3 | Bots para/de otros equipos por PR | — | fuera de este diseño |
 | 4.1 | Torneo robusto (un bot que falla pierde, el torneo sigue) | 1,0 | pendiente |
 | 4.2 | Clasificación publicada y actualizada automáticamente | 0,5 | pendiente |
-| C.1 | Repo ordenado: README, **LICENSE**, .gitignore | 0,5 | falta LICENSE |
+| C.1 | Repo ordenado: README, LICENSE, .gitignore | 0,5 | ✅ (MIT) |
 | C.2 | Ramas, PR y `main` protegida | 0,5 | falta proteger `main` (ajuste de GitHub, lo haces tú) |
 | C.3 | Tests en cada PR | 0,5 | ✅ CI |
 
@@ -376,16 +376,10 @@ Aprobadas:
 | IA-3 | Usuarios registrados; todos sus datos y lo aprendido se guardan en base de datos (§5bis) |
 | IA-4 | Orden de fases: señas → API de bots y torneo → web → agentes |
 | IA-5 | "Piedras" = tantos; amarraco = 5 tantos (D-19) |
-
 | S-1 | No se implementan las señas "cortar el mus" ni "envidar más" |
 | S-2 | Señas en todas las jugadas, sólo después del corte |
 | S-3 | "Dos reyes" = pareja exacta de reyes; con tres, medias de reyes; "pares" vale para cualquier pareja |
 | S-4 | Veintinueve, como treinta: sólo cuando nadie tiene juego |
 | IA-6 | Web: FastAPI + JavaScript + PostgreSQL |
 | IA-7 | Alojamiento en un servicio con plan gratuito (se concreta en la fase web) |
-
-Pendiente:
-
-| ID | Pregunta | Propuesta |
-|---|---|---|
-| IA-8 | Licencia | MIT |
+| IA-8 | Licencia MIT |

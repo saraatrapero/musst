@@ -93,3 +93,7 @@ batería de tests exigiendo cobertura del 100 %. La versión de `ruff` está fij
 - [`docs/scoring.md`](docs/scoring.md) — cuándo y cuánto se anota.
 - [`docs/api.md`](docs/api.md) — API pública.
 - [`docs/testing.md`](docs/testing.md) — estrategia de tests y cómo añadir tests.
+
+## Licencia
+
+[MIT](LICENSE).
