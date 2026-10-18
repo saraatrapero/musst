@@ -146,7 +146,10 @@ class SimpleBot(Bot):
             return PassAction()
         if bet.is_ordago:
             return AcceptAction() if strength + boost >= ACCEPT_ORDAGO_THRESHOLD else RejectAction()
-        if strength >= RAISE_THRESHOLD and legal.raise_ is not None:
+        my_missing = observation.target_score - observation.score.tantos_of(my_team)
+        # Subir más de lo que falta para ganar no sirve de nada (y dos bots con 31 se
+        # subirían sin fin): con tanto en juego, basta con querer.
+        if strength >= RAISE_THRESHOLD and legal.raise_ is not None and bet.pending < my_missing:
             return RaiseAction(legal.raise_.minimum)
         # Rechazar regala la negada (y en pares/juego, el valor de la jugada del rival):
         # se acepta con manos medianas y se exige más cuanto más se juega.

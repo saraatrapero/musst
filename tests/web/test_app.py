@@ -163,6 +163,7 @@ def test_room_lifecycle_over_rest(client: TestClient) -> None:
     register(client, "sara")
     room = client.post("/api/rooms", json={"mode": "dos_humanos", "signals": True}).json()
     code = room["code"]
+    assert room["level"] == "medio"  # nivel por defecto
     assert room["seats"][0]["name"] == "sara"
     assert room["signals"] is True
     assert client.get(f"/api/rooms/{code.lower()}").json()["code"] == code
@@ -187,6 +188,7 @@ def test_room_lifecycle_over_rest(client: TestClient) -> None:
 def test_room_errors(client: TestClient) -> None:
     register(client)
     assert client.post("/api/rooms", json={"mode": "cinco"}).status_code == 422
+    assert client.post("/api/rooms", json={"mode": "con_bot", "level": "dios"}).status_code == 422
     assert client.get("/api/rooms/NOEXISTE").status_code == 404
 
 

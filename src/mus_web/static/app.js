@@ -130,10 +130,11 @@ async function lobby() {
   const mode = h("select", {}, Object.entries(MODES).map(([k, v]) => h("option", { value: k }, v)));
   const signals = h("input", { type: "checkbox" });
   const phrases = h("input", { type: "checkbox", checked: true });
+  const level = h("select", {}, h("option", { value: "medio" }, "Medio: cuenta cartas y mira el marcador"), h("option", { value: "sencillo" }, "Sencillo: para empezar"));
   const code = h("input", { type: "text", maxlength: 6, placeholder: "ABC234" });
   const games = h("tbody");
   const create = async () => {
-    try { enterRoom(await api("POST", "/api/rooms", { mode: mode.value, signals: signals.checked, phrases: phrases.checked })); }
+    try { enterRoom(await api("POST", "/api/rooms", { mode: mode.value, signals: signals.checked, phrases: phrases.checked, level: level.value })); }
     catch (e) { err.textContent = e.message; }
   };
   const join = async () => {
@@ -147,6 +148,7 @@ async function lobby() {
         h("h2", {}, "Nueva partida"),
         h("label", {}, "Modo"), mode,
         h("label", { class: "check" }, signals, "Con señas (los compañeros se pueden pasar señas… si nadie más mira)"),
+        h("label", {}, "Nivel de los bots"), level,
         h("label", { class: "check" }, phrases, "Los bots dicen frases"),
         h("button", { onclick: create }, "Crear sala"),
         h("h3", {}, "Unirse con un código"), code, h("button", { onclick: join }, "Unirme"), err),
@@ -218,7 +220,7 @@ function waitingRoom() {
   const missing = room.human_seats.filter((s) => !room.seats[s]).length;
   mount(h("section", { class: "panel" },
     h("h2", {}, "Sala ", h("span", { class: "code" }, room.code)),
-    h("p", {}, MODES[room.mode], " · ", room.signals ? "con señas" : "sin señas"),
+    h("p", {}, MODES[room.mode], " · ", room.signals ? "con señas" : "sin señas", room.mode !== "cuatro" ? ` · bots de nivel ${room.level}` : ""),
     room.mode !== "con_bot" && h("p", { class: "muted" }, "Pasa este código a tus amigos para que se unan."),
     h("ul", {}, [0, 1, 2, 3].map((s) => h("li", {}, `Asiento ${s + 1} (pareja ${s % 2 ? "B" : "A"}): `,
       room.seats[s] ? `${room.seats[s].name} — ${room.seats[s].avatar.nickname}` : room.human_seats.includes(s) ? "esperando jugador…" : "bot"))),

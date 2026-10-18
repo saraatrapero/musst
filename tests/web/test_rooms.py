@@ -88,6 +88,16 @@ def test_start_rules() -> None:
     assert len({b.avatar.id for b in bots}) == 2
 
 
+def test_bot_level_chooses_the_bots() -> None:
+    simple = make_room()
+    simple.level = "sencillo"
+    simple.start(1, seed=3)
+    medium = make_room()
+    medium.start(1, seed=3)
+    assert {o.bot.name for o in simple.seats if o is not None and o.bot is not None} == {"sencillo"}
+    assert {o.bot.name for o in medium.seats if o is not None and o.bot is not None} == {"medio"}
+
+
 def test_bots_reuse_avatars_when_humans_took_them_all() -> None:
     room = Room("X", Mode.CON_BOT, False, True, 1, AVATARS[:2], random.Random(0))
     room.join(1, "sara", AVATARS[0])

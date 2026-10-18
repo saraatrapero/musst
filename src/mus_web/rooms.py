@@ -21,6 +21,7 @@ from enum import Enum
 from typing import Any
 
 from mus_engine.bots.base import Bot, BotContext
+from mus_engine.bots.medium_bot import MediumBot
 from mus_engine.bots.simple_bot import SimpleBot
 from mus_engine.config import GameConfig
 from mus_engine.errors import MusEngineError
@@ -43,6 +44,10 @@ HUMAN_SEATS: dict[Mode, tuple[SeatId, ...]] = {
     Mode.DOS_HUMANOS: (SeatId(0), SeatId(2)),  # compañeros: asientos enfrentados
     Mode.CUATRO: ALL_SEATS,
 }
+
+# Nivel de los bots de la sala (docs/ai-design.md §4).
+BOT_LEVELS: dict[str, Callable[[], Bot]] = {"sencillo": SimpleBot, "medio": MediumBot}
+DEFAULT_LEVEL = "medio"
 
 CODE_ALPHABET = "".join(c for c in string.ascii_uppercase + string.digits if c not in "O0I1")
 CODE_LENGTH = 6
@@ -81,6 +86,7 @@ class Room:
     game: Game | None = None
     phrases: list[dict[str, Any]] = field(default_factory=list)
     saved: bool = False
+    level: str = DEFAULT_LEVEL
     _phrase_maker: PhraseMaker | None = None
     _seen: int = 0  # eventos ya comentados
     _phrase_count: int = 0
@@ -131,7 +137,7 @@ class Room:
             raise RoomError("No se puede abandonar una partida empezada")
         self.seats[seat] = None
 
-    def start(self, user_id: int, seed: int, bot_factory: Callable[[], Bot] = SimpleBot) -> None:
+    def start(self, user_id: int, seed: int, bot_factory: Callable[[], Bot] | None = None) -> None:
         if user_id != self.host_id:
             raise RoomError("Sólo quien creó la sala puede empezar")
         if self.started:
@@ -142,6 +148,7 @@ class Room:
         free = [a for a in self.avatars if a.id not in taken] or list(self.avatars)
         self.rng.shuffle(free)
         config = GameConfig(signals_enabled=self.signals)
+        bot_factory = bot_factory or BOT_LEVELS[self.level]
         speakers: dict[SeatId, Avatar] = {}
         for seat in ALL_SEATS:
             if self.seats[seat] is None:
@@ -250,6 +257,7 @@ class Room:
             "mode": self.mode.value,
             "signals": self.signals,
             "phrases": self.phrases_enabled,
+            "level": self.level,
             "host_id": self.host_id,
             "started": self.started,
             "finished": self.finished,

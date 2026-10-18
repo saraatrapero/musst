@@ -24,10 +24,11 @@ Motor completo: todas las fases del plan están implementadas y probadas.
 | Información privada | observaciones por lista blanca, eventos con visibilidad |
 | Replay | registro reconstruible desde los eventos, navegación por estados |
 | Señas | señas oficiales de la FEM, siempre verdaderas; sólo las ve quien mira al que las hace (opcional) |
-| Bots | API pública (`Bot.decide`), bots `aleatorio` y `sencillo`, comprobación automática de bots nuevos |
+| Bots | API pública (`Bot.decide`), bots `aleatorio`, `sencillo` y `medio`, comprobación automática de bots nuevos |
+| IA | conteo de cartas, probabilidad exacta de cada lance (330 clases de mano), valor de los tantos según el marcador (`docs/ai.md`) |
 | Web | cuentas, salas para 1, 2 o 4 personas, mesa en el navegador con avatares, miradas, señas y frases (`docs/web.md`) |
 | Torneo | todos contra todos, robusto ante bots que fallan, clasificación en Markdown y JSON |
-| Calidad | 900 tests (unitarios, reglas, integración, seguridad, propiedades, regresión), cobertura 100 %, ruff y mypy estricto |
+| Calidad | 950 tests (unitarios, reglas, integración, seguridad, propiedades, regresión), cobertura 100 %, ruff y mypy estricto |
 
 Desviación conocida respecto al reglamento: no se modelan las penalizaciones del
 postre que acepta un órdago con la jugada mínima (D-24a, `docs/rules.md`).
@@ -110,7 +111,8 @@ batería de tests exigiendo cobertura del 100 %. La versión de `ruff` está fij
 
 - [`docs/architecture.md`](docs/architecture.md) — arquitectura final, módulos, flujo de una acción.
 - [`docs/design.md`](docs/design.md) — diseño inicial aprobado y plan por fases.
-- [`docs/ai-design.md`](docs/ai-design.md) — propuesta de IA multiagente y plataforma de bots (en revisión).
+- [`docs/ai-design.md`](docs/ai-design.md) — diseño de la IA multiagente y plan por fases.
+- [`docs/ai.md`](docs/ai.md) — agentes ya implementados, bot medio y resultados.
 - [`docs/rules.md`](docs/rules.md) — trazabilidad con el reglamento y decisiones aprobadas.
 - [`docs/state-machine.md`](docs/state-machine.md) — fases, validación y cómo añadir fases.
 - [`docs/scoring.md`](docs/scoring.md) — cuándo y cuánto se anota.

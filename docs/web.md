@@ -53,8 +53,8 @@ Al empezar, `Hub.launch` crea una tarea que, hasta el final de la partida:
 | `cuatro` | 0, 1, 2 y 3 | ninguno |
 
 Quien crea la sala se sienta en el asiento 0 y es quien la empieza. El resto se une con
-el código de 6 caracteres (sin O/0/I/1 para que no haya confusiones). Por ahora los bots
-de la web son el bot `sencillo`; los niveles llegarán con las fases D–H.
+el código de 6 caracteres (sin O/0/I/1 para que no haya confusiones). Al crear la sala se
+elige el nivel de los bots: `medio` (por defecto) o `sencillo`.
 
 ## Protocolo de la mesa (WebSocket)
 
@@ -92,7 +92,7 @@ partida; y aun así la última palabra la tiene el motor, que vuelve a validar.
 | `GET /api/me/games` | últimas 50 partidas |
 | `GET /api/me/export` | todos mis datos en JSON (derecho de acceso) |
 | `DELETE /api/me` | `{password}`: borra la cuenta, sus sesiones y su participación; su nombre se sustituye por «(cuenta borrada)» en los registros guardados |
-| `POST /api/rooms` | `{mode, signals, phrases}` |
+| `POST /api/rooms` | `{mode, signals, phrases, level}` (`level`: `medio` o `sencillo`) |
 | `GET /api/rooms/{código}` · `POST .../join` · `POST .../leave` · `POST .../start` | salas |
 
 ## Seguridad
