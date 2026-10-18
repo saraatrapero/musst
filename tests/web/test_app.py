@@ -412,3 +412,7 @@ def test_entry_point_is_importable() -> None:
 )
 def test_postgres_urls_use_psycopg(url: str, expected: str) -> None:
     assert app_module.postgres_driver(url) == expected
+
+
+def test_health_check(client: TestClient) -> None:
+    assert client.get("/healthz").json() == {"status": "ok"}

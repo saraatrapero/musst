@@ -125,9 +125,8 @@ donde mira el jugador (compañero, rival o mesa) y que sonríe o se fastidia seg
 
 ## Despliegue (C2)
 
-`Dockerfile` en la raíz. Cualquier servicio con Docker y PostgreSQL vale (Render,
-Railway, Fly.io…): definir `MUSST_DATABASE_URL` (se acepta `postgres://`) y
-`MUSST_SECURE=1`. Las salas activas viven en memoria: un único proceso servidor.
+Guía paso a paso en [`deploy.md`](deploy.md): Render con el `render.yaml` de la raíz
+(web y PostgreSQL gratuitos). `GET /healthz` comprueba servidor y base de datos.
 
 ## Tests
 

@@ -31,7 +31,7 @@ from fastapi import Cookie, Depends, FastAPI, HTTPException, Request, Response, 
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import select, text
 from starlette.websockets import WebSocketDisconnect
 
 from mus_web.avatars_pack import avatars_by_id, load_pack
@@ -344,6 +344,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return avatar
 
     # --- Cuentas -------------------------------------------------------------------------
+
+    @app.get("/healthz", include_in_schema=False)
+    def healthz() -> dict[str, str]:
+        """Para el alojamiento: responde si el servidor y la base de datos funcionan."""
+        with db.session() as session:
+            session.execute(text("SELECT 1"))
+        return {"status": "ok"}
 
     @app.get("/api/avatars")
     def avatars() -> dict[str, Any]:
