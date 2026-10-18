@@ -2,8 +2,8 @@
 
 Motor de Mus en Python, determinista y sin dependencias, que sigue el
 **Reglamento de Juego de la Federación Española de Mus**
-(`docs/reglamento/reglamento-fem.pdf`). Es el núcleo de la futura aplicación
-MUS.ST: no incluye interfaz, usuarios ni IA.
+(`docs/reglamento/reglamento-fem.pdf`). Es el núcleo de la aplicación MUS.ST, que
+incluye además una web para jugar en el navegador (`mus_web`).
 
 > Principio: *si el motor acepta una acción, esa acción es legal según las reglas
 > implementadas.*
@@ -25,8 +25,9 @@ Motor completo: todas las fases del plan están implementadas y probadas.
 | Replay | registro reconstruible desde los eventos, navegación por estados |
 | Señas | señas oficiales de la FEM, siempre verdaderas; sólo las ve quien mira al que las hace (opcional) |
 | Bots | API pública (`Bot.decide`), bots `aleatorio` y `sencillo`, comprobación automática de bots nuevos |
+| Web | cuentas, salas para 1, 2 o 4 personas, mesa en el navegador con avatares, miradas, señas y frases (`docs/web.md`) |
 | Torneo | todos contra todos, robusto ante bots que fallan, clasificación en Markdown y JSON |
-| Calidad | 800 tests (unitarios, reglas, integración, seguridad, propiedades, regresión), cobertura 100 %, ruff y mypy estricto |
+| Calidad | 900 tests (unitarios, reglas, integración, seguridad, propiedades, regresión), cobertura 100 %, ruff y mypy estricto |
 
 Desviación conocida respecto al reglamento: no se modelan las penalizaciones del
 postre que acepta un órdago con la jugada mínima (D-24a, `docs/rules.md`).
@@ -34,7 +35,8 @@ postre que acepta un órdago con la jugada mínima (D-24a, `docs/rules.md`).
 ## Instalación
 
 ```bash
-python -m pip install -e ".[dev]"     # Python >= 3.11
+python -m pip install -e ".[dev]"       # motor y bots (Python >= 3.11, sin dependencias)
+python -m pip install -e ".[dev,web]"   # además, la web
 ```
 
 ## Uso
@@ -86,10 +88,20 @@ python -m mus_engine.arena --games 20 --seed 1   # torneo entre todos los bots r
 
 Para escribir un bot, ver [`docs/bots.md`](docs/bots.md).
 
+## Web
+
+```bash
+python -m mus_web     # http://127.0.0.1:8000 (SQLite en ./musst.db)
+```
+
+Registro, elección de avatar, salas con código de invitación y partidas en tiempo real.
+El servidor ejecuta el motor y envía a cada jugador sólo su observación. Detalles,
+seguridad y despliegue en [`docs/web.md`](docs/web.md).
+
 ## Integración continua
 
 `.github/workflows/ci.yml` ejecuta en cada push a `main` y en cada pull request, con
-Python 3.11, 3.12 y 3.13: `ruff check`, `ruff format --check`, `mypy --strict` y la
+Python 3.11, 3.12 y 3.13 (con las dependencias de la web): `ruff check`, `ruff format --check`, `mypy --strict` y la
 batería de tests exigiendo cobertura del 100 %. La versión de `ruff` está fijada en
 `pyproject.toml` para que el formato no cambie entre entornos.
 
@@ -103,6 +115,7 @@ batería de tests exigiendo cobertura del 100 %. La versión de `ruff` está fij
 - [`docs/scoring.md`](docs/scoring.md) — cuándo y cuánto se anota.
 - [`docs/api.md`](docs/api.md) — API pública.
 - [`docs/bots.md`](docs/bots.md) — tutorial: crear, probar y enviar un bot; torneo.
+- [`docs/web.md`](docs/web.md) — la web: arquitectura, protocolo, seguridad, datos y despliegue.
 - [`docs/testing.md`](docs/testing.md) — estrategia de tests y cómo añadir tests.
 
 ## Licencia
