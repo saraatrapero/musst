@@ -96,7 +96,8 @@ python -m mus_web     # http://127.0.0.1:8000 (SQLite en ./musst.db)
 
 Registro, elección de avatar, salas con código de invitación y partidas en tiempo real.
 El servidor ejecuta el motor y envía a cada jugador sólo su observación. Detalles,
-seguridad y despliegue en [`docs/web.md`](docs/web.md).
+seguridad en [`docs/web.md`](docs/web.md); publicarla en Internet, en
+[`docs/deploy.md`](docs/deploy.md).
 
 ## Integración continua
 
@@ -115,7 +116,8 @@ batería de tests exigiendo cobertura del 100 %. La versión de `ruff` está fij
 - [`docs/scoring.md`](docs/scoring.md) — cuándo y cuánto se anota.
 - [`docs/api.md`](docs/api.md) — API pública.
 - [`docs/bots.md`](docs/bots.md) — tutorial: crear, probar y enviar un bot; torneo.
-- [`docs/web.md`](docs/web.md) — la web: arquitectura, protocolo, seguridad, datos y despliegue.
+- [`docs/web.md`](docs/web.md) — la web: arquitectura, protocolo, seguridad y datos.
+- [`docs/deploy.md`](docs/deploy.md) — publicar la web en Internet (Render), paso a paso.
 - [`docs/testing.md`](docs/testing.md) — estrategia de tests y cómo añadir tests.
 
 ## Licencia
