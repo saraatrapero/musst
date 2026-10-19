@@ -162,7 +162,7 @@ def event_to_json(envelope: EventEnvelope) -> JSON:
     }
 
 
-def observation_to_json(obs: Observation, events_tail: int = 60) -> JSON:
+def observation_to_json(obs: Observation, events_tail: int = 150) -> JSON:
     """Lo que se envía a un jugador. Sólo campos de la observación (lista blanca)."""
     return {
         "seat": obs.seat,

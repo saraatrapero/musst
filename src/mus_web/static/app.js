@@ -2,7 +2,7 @@
 // MUS.ST: cliente sin compilación. Todo el DOM se construye con textContent (sin
 // innerHTML) para que ningún nombre de usuario pueda inyectar código.
 
-const state = { me: null, avatars: [], notice: "", room: null, view: null, ws: null, selected: new Set(), bubbles: {}, lastPhrase: 0, quiet: false };
+const state = { me: null, avatars: [], notice: "", room: null, view: null, ws: null, selected: new Set(), bubbles: {}, lastPhrase: 0, quiet: false, summarySeen: 0, phraseLog: [] };
 
 const SUITS = { O: "oros", C: "copas", E: "espadas", B: "bastos" };
 const FIGURES = { 1: "As", 10: "Sota", 11: "Caballo", 12: "Rey" };
@@ -14,7 +14,7 @@ const SIGNALS = {
   medias_ases: "Tres ases", medias: "Medias", duples: "Duples", juego: "Juego",
   treinta_y_una: "La 31", treinta: "Treinta", veintinueve: "29", ciego: "Ciego (nada)",
 };
-const ACTIONS = { mus: "Mus", cut: "Corto", pass: "Paso", accept: "Quiero", reject: "No quiero", ordago: "¡Órdago!", discard: "Descartar" };
+const ACTIONS = { mus: "Mus (cambiar cartas)", cut: "Corto (jugar)", pass: "Paso", accept: "Quiero", reject: "No quiero", ordago: "¡Órdago!", discard: "Descartar" };
 
 function h(tag, attrs = {}, ...children) {
   const el = document.createElement(tag);
@@ -213,6 +213,7 @@ function closeSocket() { const ws = state.ws; state.ws = null; state.link = ""; 
 function enterRoom(room) {
   closeSocket();
   state.room = room; state.view = null; state.selected.clear(); state.bubbles = {}; state.lastPhrase = 0;
+  state.summarySeen = 0; state.phraseLog = [];
   state.link = "Conectando con la mesa…"; state.retries = 0;
   connect(room.code);
   waitingRoom();
@@ -230,7 +231,9 @@ function connect(code) {
     state.view = data; state.room = data.room;
     for (const p of data.phrases) if (p.id > state.lastPhrase) {
       state.lastPhrase = p.id;
-      if (!state.quiet) { state.bubbles[p.seat] = p.text; setTimeout(() => { if (state.bubbles[p.seat] === p.text) { delete state.bubbles[p.seat]; render(); } }, 4000); }
+      const who = data.room.seats[p.seat] ? data.room.seats[p.seat].name : "";
+      state.phraseLog.push(`${who}: «${p.text}»`);
+      if (!state.quiet) { state.bubbles[p.seat] = p.text; setTimeout(() => { if (state.bubbles[p.seat] === p.text) { delete state.bubbles[p.seat]; render(); } }, 6500); }
     }
     render();
   };
@@ -279,11 +282,173 @@ function waitingRoom() {
     err));
 }
 
+// --- Naipes ---------------------------------------------------------------------------------
+// Baraja española dibujada en SVG: número y palo (oros, copas, espadas, bastos).
+
+const SUIT_COLORS = { O: "#c99a06", C: "#c0392b", E: "#2c4a7a", B: "#2e7d32" };
+
+function suitIcon(suit, size = 26) {
+  const ns = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(ns, "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("width", size);
+  svg.setAttribute("height", size);
+  svg.setAttribute("aria-hidden", "true");
+  const add = (name, attrs) => { const e = document.createElementNS(ns, name); for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v); svg.append(e); };
+  const c = SUIT_COLORS[suit];
+  if (suit === "O") {
+    add("circle", { cx: 12, cy: 12, r: 10, fill: c, stroke: "#7a5c00", "stroke-width": 1.5 });
+    add("circle", { cx: 12, cy: 12, r: 5, fill: "none", stroke: "#7a5c00", "stroke-width": 1.5 });
+  } else if (suit === "C") {
+    add("path", { d: "M5 4h14c0 6-3 9-6 9.5V18h3v2H8v-2h3v-4.5C8 13 5 10 5 4z", fill: c });
+  } else if (suit === "E") {
+    add("path", { d: "M11 2h2v14h-2z", fill: c });
+    add("path", { d: "M6 15h12v2H6z", fill: c });
+    add("path", { d: "M11 17h2v5h-2z", fill: "#6b4f2a" });
+  } else {
+    add("path", { d: "M9 3c2-1 5 0 5 2l-1 15c0 1.5-3 1.5-3 0L8 6c0-1 0-2 1-3z", fill: c });
+    add("circle", { cx: 10, cy: 9, r: 1, fill: "#1b4d1e" });
+    add("circle", { cx: 12, cy: 13, r: 1, fill: "#1b4d1e" });
+  }
+  return svg;
+}
+
+const FIGURE_LETTER = { 1: "1", 10: "S", 11: "C", 12: "R" };
+
 function cardEl(code, opts = {}) {
-  if (!code) return h("span", { class: "card back" });
+  if (!code) return h("span", { class: `card back${opts.small ? " mini" : ""}` });
   const suit = code.slice(-1), num = Number(code.slice(0, -1));
-  return h(opts.onclick ? "button" : "span", { class: `card ${suit}${opts.selected ? " sel" : ""}${opts.small ? " mini" : ""}`, onclick: opts.onclick, title: `${FIGURES[num] || num} de ${SUITS[suit]}` },
-    FIGURES[num] ? FIGURES[num][0] + (num === 1 ? "s" : "") : String(num), h("small", {}, SUITS[suit]));
+  const label = FIGURE_LETTER[num] || String(num);
+  const title = `${FIGURES[num] || num} de ${SUITS[suit]}`;
+  return h(opts.onclick ? "button" : "span",
+    { class: `card ${suit}${opts.selected ? " sel" : ""}${opts.small ? " mini" : ""}`, onclick: opts.onclick, title, "aria-label": title },
+    h("span", { class: "num" }, label), suitIcon(suit, opts.small ? 14 : 26),
+    !opts.small && h("span", { class: "num bottom" }, label));
+}
+
+// --- Qué tengo -------------------------------------------------------------------------------
+const RANK_NAMES = { 1: "ases", 4: "cuatros", 5: "cincos", 6: "seises", 7: "sietes", 10: "sotas", 11: "caballos", 12: "reyes" };
+
+function effectiveRank(code) {
+  const n = Number(code.slice(0, -1));
+  return n === 3 ? 12 : n === 2 ? 1 : n;
+}
+
+function handInfo(cards) {
+  if (cards.length !== 4) return "";
+  const ranks = cards.map(effectiveRank);
+  const counts = {};
+  for (const r of ranks) counts[r] = (counts[r] || 0) + 1;
+  const groups = Object.entries(counts).map(([r, n]) => [Number(r), n]).sort((a, b) => b[1] - a[1] || b[0] - a[0]);
+  let pares = "sin pares";
+  if (groups[0][1] === 4) pares = `duples de ${RANK_NAMES[groups[0][0]]}`;
+  else if (groups[0][1] === 3) pares = `medias de ${RANK_NAMES[groups[0][0]]}`;
+  else if (groups[0][1] === 2 && groups[1][1] === 2) pares = `duples de ${RANK_NAMES[groups[0][0]]} y ${RANK_NAMES[groups[1][0]]}`;
+  else if (groups[0][1] === 2) pares = `pareja de ${RANK_NAMES[groups[0][0]]}`;
+  const total = ranks.reduce((acc, r) => acc + (r >= 10 ? 10 : r), 0);
+  const juego = total >= 31 ? `juego de ${total}${total === 31 ? " (¡la mejor!)" : ""}` : `sin juego (al punto: ${total})`;
+  const reyes = ranks.filter((r) => r === 12).length, ases = ranks.filter((r) => r === 1).length;
+  return `Tu jugada: ${pares} · ${juego} · grande: ${reyes} ${reyes === 1 ? "rey" : "reyes"} · chica: ${ases} ${ases === 1 ? "as" : "ases"}`;
+}
+
+// --- Lo que ha dicho cada uno en esta mano ----------------------------------------------------
+function seatChips(g) {
+  const said = {}, declared = { pares: {}, juego: {} };
+  for (const e of g.events) {
+    if (e.hand !== g.hand_number) continue;
+    const d = e.data;
+    switch (e.type) {
+      case "LanceStarted": for (const k of Object.keys(said)) delete said[k]; break;
+      case "DiscardDeclared": said[d.seat] = `Pide ${d.count}`; break;
+      case "MusRequested": said[d.seat] = "Mus"; break;
+      case "MusCut": said[d.seat] = "¡Corto!"; break;
+      case "Passed": said[d.seat] = "Paso"; break;
+      case "BetPlaced": said[d.seat] = `Envido ${d.amount}`; break;
+      case "BetRaised": said[d.seat] = `${d.increment} más`; break;
+      case "OrdagoDeclared": said[d.seat] = "¡ÓRDAGO!"; break;
+      case "BetAccepted": case "OrdagoAccepted": said[d.seat] = "Quiero"; break;
+      case "BetRejected": said[d.seat] = "No quiero"; break;
+      case "ParesDeclared": d.holders.forEach((x, i) => { declared.pares[i] = x; }); break;
+      case "JuegoDeclared": d.holders.forEach((x, i) => { declared.juego[i] = x; }); break;
+      default: break;
+    }
+  }
+  return { said, declared };
+}
+
+// --- Lances ---------------------------------------------------------------------------------
+const RESOLUTIONS = {
+  passed: () => "En paso",
+  accepted: (o) => `Querido: ${o.amount} (se ve al final)`,
+  rejected: (o, t) => `No querido: +${o.immediate_points} ${t(o.team)}`,
+  uncontested: (o, t) => `Solo lo juega${o.team ? ` ${t(o.team)}` : ""}`,
+  not_played: () => "Nadie tiene",
+  ordago_accepted: () => "¡Órdago querido!",
+};
+
+function lanceBoard(g) {
+  const mineTeam = g.seat % 2 ? "B" : "A";
+  const teamName = (t) => (t === mineTeam ? "nosotros" : "ellos");
+  const punto = g.juego_holders && g.juego_holders.every((x) => !x);
+  const order = ["grande", "chica", "pares", punto ? "punto" : "juego"];
+  return h("div", { class: "lances" }, order.map((lance) => {
+    const outcome = g.outcomes.find((o) => o.lance === lance);
+    let status = "—", cls = "";
+    if (outcome) {
+      status = (RESOLUTIONS[outcome.resolution] || (() => outcome.resolution))(outcome, teamName);
+      cls = "done";
+    } else if (g.phase === "lance" && g.lance === lance) {
+      cls = "now";
+      const b = g.bet;
+      if (b && b.is_ordago) status = "¡Órdago en juego!";
+      else if (b && b.pending > b.accepted) status = `Envite de ${b.pending}`;
+      else status = "Hablando…";
+    }
+    return h("div", { class: `lance ${cls}` }, h("span", { class: "lname" }, LANCES[lance]), h("span", {}, status));
+  }));
+}
+
+// --- Aviso de turno ---------------------------------------------------------------------------
+function turnBanner(g) {
+  if (g.phase === "game_over") return null;
+  const mine = g.to_act.includes(g.seat);
+  const n = (s) => g.names[s];
+  if (!mine) return h("div", { class: "banner wait" }, `Le toca a ${g.to_act.map(n).join(", ")}…`);
+  let text = "Te toca";
+  if (g.phase === "mus_decision") text = "Te toca: ¿pides mus (cambiar cartas) o cortas (jugar con estas)?";
+  else if (g.phase === "discard") text = "Toca las cartas que quieres cambiar y pulsa «Descartar».";
+  else if (g.phase === "lance" && g.bet) {
+    const lance = LANCES[g.lance] ? `la ${LANCES[g.lance]}` : "este lance";
+    if (g.bet.is_ordago) text = `¡${n(g.bet.proposer)} echa un ÓRDAGO a ${lance}! Si quieres, este lance decide la partida.`;
+    else if (g.bet.pending > g.bet.accepted && g.bet.proposer != null) text = `${n(g.bet.proposer)} envida ${g.bet.pending} a ${lance}. ¿Quieres?`;
+    else text = `Te toca hablar a ${lance}: paso, envido u órdago.`;
+  }
+  return h("div", { class: "banner mine" }, text);
+}
+
+// --- Resumen de la mano -------------------------------------------------------------------------
+const REASONS = { negada: "no quisieron", envite_no_querido: "no quisieron el revoque", envite: "envite querido", paso: "en paso", pares: "pares", juego: "juego", punto: "punto", ordago: "órdago" };
+
+function handSummary(g) {
+  const hand = g.phase === "game_over" ? g.hand_number : g.hand_number - 1;
+  if (hand < 1 || state.summarySeen >= hand) return null;
+  const evs = g.events.filter((e) => e.hand === hand);
+  const points = evs.filter((e) => e.type === "PointsAwarded");
+  if (!points.length) return null;
+  const reveal = evs.find((e) => e.type === "HandsRevealed");
+  const mineTeam = g.seat % 2 ? "B" : "A";
+  const who = (t) => (t === mineTeam ? "Nosotros" : "Ellos");
+  const last = points[points.length - 1].data.tantos_after;
+  const close = () => { state.summarySeen = hand; render(); };
+  return h("div", { class: "overlay", onclick: (ev) => { if (ev.target === ev.currentTarget) close(); } },
+    h("div", { class: "summary panel" },
+      h("h2", {}, `Resultado de la mano ${hand}`),
+      h("ul", {}, points.map((e) => h("li", { class: e.data.team === mineTeam ? "good" : "bad" },
+        `${LANCES[e.data.lance] || e.data.lance}: +${e.data.points} ${who(e.data.team)} (${REASONS[e.data.reason] || e.data.reason})`))),
+      h("p", {}, `Marcador: nosotros ${last[mineTeam === "A" ? 0 : 1]} · ellos ${last[mineTeam === "A" ? 1 : 0]}`),
+      reveal && h("div", { class: "revealed" }, reveal.data.hands.map((cs, s) =>
+        h("div", { class: "rv" }, h("b", {}, g.names[s]), " ", h("span", { class: "cards" }, cs.map((c) => cardEl(c, { small: true }))), " ", h("small", { class: "muted" }, handInfo(cs).replace("Tu jugada: ", ""))))),
+      h("button", { onclick: close }, g.phase === "game_over" ? "Ver la mesa" : "Seguir")));
 }
 
 const POS_VECTORS = [[0, 1], [1, 0], [0, -1], [-1, 0]]; // abajo, derecha, arriba, izquierda
@@ -303,8 +468,9 @@ function moodFor(g, seat) {
   return winTeam === team ? "contento" : "fastidiado";
 }
 
-function describe(e, names) {
+function describe(e, names, seat) {
   const d = e.data, n = (s) => names[s];
+  const team = (t) => (t === (seat % 2 ? "B" : "A") ? "nosotros" : "ellos");
   switch (e.type) {
     case "HandStarted": return `— Mano ${d.hand_number}: reparte ${n(d.dealer)}, es mano ${n(d.mano)}`;
     case "MusRequested": return `${n(d.seat)}: mus`;
@@ -320,10 +486,10 @@ function describe(e, names) {
     case "ParesDeclared": return "Pares: " + d.holders.map((x, i) => `${n(i)} ${x ? "sí" : "no"}`).join(", ");
     case "JuegoDeclared": return "Juego: " + d.holders.map((x, i) => `${n(i)} ${x ? "sí" : "no"}`).join(", ");
     case "LanceResolved": return `${LANCES[d.lance]} para ${n(d.winner)}`;
-    case "PointsAwarded": return `+${d.points} pareja ${d.team} (${LANCES[d.lance] || d.lance}) → ${d.tantos_after.join("–")}`;
+    case "PointsAwarded": return `+${d.points} ${team(d.team)} (${LANCES[d.lance] || d.lance}, ${REASONS[d.reason] || d.reason})`;
     case "HandsRevealed": return "Cartas: " + d.hands.map((cs, i) => `${n(i)} ${cs.join(" ")}`).join(" · ");
-    case "GameWon": return `Juego para la pareja ${d.team}`;
-    case "GameFinished": return `¡Partida para la pareja ${d.winner}!`;
+    case "GameWon": return `Juego para ${team(d.team)}`;
+    case "GameFinished": return `¡Partida para ${team(d.winner)}!`;
     case "SignalSeen": return `Has visto una seña de ${n(d.sender)}: ${SIGNALS[d.signal]}`;
     default: return null;
   }
@@ -374,19 +540,20 @@ function actionPanel(g) {
 
 function tableScreen() {
   const v = state.view, g = v.game, room = v.room, me = g.seat;
-  const lastReveal = [...g.events].reverse().find((e) => e.type === "HandsRevealed");
   const revealed = g.revealed_hands;
-  const previous = !revealed && lastReveal && lastReveal.hand === g.hand_number - 1 ? lastReveal.data.hands : null;
+  const { said, declared } = seatChips(g);
   const seats = [0, 1, 2, 3].map((s) => {
     const pos = (s - me + 4) % 4;
     const occ = room.seats[s];
     const target = g.gaze ? g.gaze[s] : null;
     const [dx, dy] = gazeVector(pos, target == null ? null : (target - me + 4) % 4);
-    const tags = [];
+    const tags = [s === me ? "tú" : (s % 2 === me % 2 ? "compañero" : "rival")];
     if (g.mano === s) tags.push("mano");
     if (g.dealer === s) tags.push("reparte");
-    if (g.discard_counts[s] != null) tags.push(`pide ${g.discard_counts[s]}`);
-    if (g.mus_requested.includes(s)) tags.push("mus");
+    const chips = [];
+    if (said[s]) chips.push(h("span", { class: `chip say${said[s].includes("ÓRDAGO") ? " hot" : ""}` }, said[s]));
+    if (s in declared.pares) chips.push(h("span", { class: `chip ${declared.pares[s] ? "yes" : "no"}` }, declared.pares[s] ? "Pares: sí" : "Pares: no"));
+    if (s in declared.juego) chips.push(h("span", { class: `chip ${declared.juego[s] ? "yes" : "no"}` }, declared.juego[s] ? "Juego: sí" : "Juego: no"));
     let cards;
     if (s === me) {
       cards = g.my_hand.map((c) => cardEl(c, {
@@ -396,34 +563,37 @@ function tableScreen() {
     } else if (revealed && revealed[s] && revealed[s].length) {
       cards = revealed[s].map((c) => cardEl(c));
     } else {
-      cards = [0, 1, 2, 3].map(() => cardEl(null));
+      cards = [0, 1, 2, 3].map(() => cardEl(null, { small: true }));
     }
-    return h("div", { class: `seat pos${pos}${g.to_act.includes(s) ? " turn" : ""}` },
+    return h("div", { class: `seat pos${pos}${g.to_act.includes(s) ? " turn" : ""}${s % 2 === me % 2 ? " ours" : " theirs"}` },
       state.bubbles[s] && h("div", { class: "bubble" }, state.bubbles[s]),
       face(occ.avatar, dx, dy, moodFor(g, s)),
       h("div", { class: "name" }, occ.name, occ.bot ? " 🤖" : ""),
-      h("div", { class: "tags" }, `Pareja ${s % 2 ? "B" : "A"}`, tags.length ? " · " + tags.join(" · ") : ""),
-      h("div", { class: "cards" }, cards));
+      h("div", { class: "tags" }, tags.join(" · ")),
+      chips.length > 0 && h("div", { class: "chips" }, chips),
+      h("div", { class: "cards" }, cards),
+      s === me && h("div", { class: "info" }, handInfo(g.my_hand)));
   });
   const mineTeam = me % 2;
   const center = h("div", { class: "center" },
     h("div", { class: "score" },
-      h("span", {}, "Nosotros ", h("b", {}, g.score.tantos[mineTeam])),
-      h("span", {}, "Ellos ", h("b", {}, g.score.tantos[1 - mineTeam]))),
-    h("div", { class: "dim" }, `a ${g.target_score} · mano ${g.hand_number}`),
-    h("div", {}, PHASES[g.phase] || g.phase, g.lance ? ` · ${LANCES[g.lance]}` : ""),
-    g.bet && g.bet.accepted + g.bet.pending > 0 && h("div", {}, g.bet.is_ordago ? "¡Órdago!" : `En juego: ${g.bet.accepted}${g.bet.pending ? ` (+${g.bet.pending})` : ""}`),
+      h("div", { class: "team ours" }, h("small", {}, "Nosotros"), h("b", {}, g.score.tantos[mineTeam])),
+      h("div", { class: "team theirs" }, h("small", {}, "Ellos"), h("b", {}, g.score.tantos[1 - mineTeam]))),
+    h("div", { class: "dim" }, `a ${g.target_score} tantos · mano ${g.hand_number} · ${PHASES[g.phase] || g.phase}`),
+    lanceBoard(g),
     g.signals_seen.length > 0 && h("div", { class: "signals-seen" }, "Señas vistas: " + g.signals_seen.map((x) => `${g.names[x.sender]}: ${SIGNALS[x.signal]}`).join(", ")),
-    previous && h("div", { class: "previous" }, h("div", {}, "Mano anterior"),
-      previous.map((cs, s) => h("div", {}, g.names[s] + ": ", cs.map((c) => cardEl(c, { small: true }))))),
     g.winner && h("h2", {}, g.winner === (mineTeam ? "B" : "A") ? "¡Habéis ganado!" : "Habéis perdido"),
     g.winner && h("button", { onclick: lobby }, "Volver al lobby"));
-  const log = h("div", { class: "log" }, g.events.map((e) => describe(e, g.names)).filter(Boolean).slice(-40).map((t) => h("div", {}, t)));
+  const lines = g.events.map((e) => describe(e, g.names, me)).filter(Boolean).slice(-40);
+  const log = h("div", { class: "log" }, lines.map((t) => h("div", {}, t)),
+    state.phraseLog.slice(-5).map((p) => h("div", { class: "said" }, `💬 ${p}`)));
   mount(
+    turnBanner(g),
     h("div", { class: "table" }, seats, center),
     h("section", { class: "panel" }, linkStatus(), actionPanel(g), h("p", { class: "error", id: "table-error" }),
       h("label", { class: "check" }, h("input", { type: "checkbox", checked: state.quiet, onchange: (ev) => { state.quiet = ev.target.checked; } }), "Silenciar frases")),
-    h("section", { class: "panel" }, h("h3", {}, "Lo que ha pasado"), log));
+    h("section", { class: "panel" }, h("h3", {}, "Lo que ha pasado"), log),
+    handSummary(g));
   log.scrollTop = log.scrollHeight;
 }
 
