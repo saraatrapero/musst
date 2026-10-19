@@ -121,4 +121,4 @@ Reglas del torneo:
 | Observación | `mus_engine.game.observations.Observation` (ver también `docs/api.md`) |
 | Comprobación | `mus_engine.bots.conformance.check_bot` |
 | Torneo | `mus_engine.arena.run_tournament`, `python -m mus_engine.arena` |
-| Bots incluidos | `aleatorio` (azar entre acciones legales), `sencillo` (heurísticas de fuerza de mano) |
+| Bots incluidos | `aleatorio` (azar entre acciones legales), `sencillo` (heurísticas de fuerza de mano), `medio` (conteo, probabilidad exacta por lance y marcador; `docs/ai.md`) |

@@ -42,7 +42,7 @@ def test_contributed_bot_is_discovered(tmp_path, monkeypatch) -> None:  # type: 
     )
     found = discover_contrib(package)
     assert [cls.name for cls in found] == ["listo"]
-    assert set(all_bots(package)) == {"aleatorio", "sencillo", "listo"}
+    assert set(all_bots(package)) == {"aleatorio", "sencillo", "medio", "listo"}
     sys.modules.pop(f"{package}.equipo_x", None)
 
 

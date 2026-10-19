@@ -394,7 +394,7 @@ de pasar a la siguiente.
 | A | Señas en el motor (C.VIII) ✅ | base de la IA |
 | B | API de bots, bots base (aleatorio y heurístico sencillo), tests de conformidad, torneo ✅ | 2.1, 2.2, 4.1, 3.1 |
 | C | Web (FastAPI + WebSocket + JS): C1 cuentas, salas de los 3 modos, mesa con avatares, señas y frases ✅ (`docs/web.md`); C2 publicación ✅ (`docs/deploy.md`) | 1.2, 1.3 |
-| D | Fuerza de manos, CardCounting y ScoreAgent; bot **Medio** | 3.1 |
+| D | Fuerza de manos, CardCounting y ScoreAgent; bot **Medio** ✅ (`docs/ai.md`) | 3.1 |
 | E | Perfiles de jugador y memoria persistente | 3.1 |
 | F | Inferencia de manos, EquityAgent, orquestador, explicaciones | 3.1 |
 | G | Señas: SignalAgent | 3.1 |

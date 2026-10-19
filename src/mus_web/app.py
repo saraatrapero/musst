@@ -37,7 +37,7 @@ from starlette.websockets import WebSocketDisconnect
 from mus_web.avatars_pack import avatars_by_id, load_pack
 from mus_web.codec import record_to_json
 from mus_web.db import Database, GameRow, GameSeat, LoginSession, User, utcnow
-from mus_web.rooms import Mode, Room, RoomError, new_code
+from mus_web.rooms import BOT_LEVELS, DEFAULT_LEVEL, Mode, Room, RoomError, new_code
 from mus_web.security import (
     CredentialError,
     check_password,
@@ -112,6 +112,7 @@ class RoomIn(BaseModel):
     mode: str
     signals: bool = False
     phrases: bool = True
+    level: str = DEFAULT_LEVEL
 
 
 # --- Salas en memoria --------------------------------------------------------------------
@@ -140,7 +141,9 @@ class Hub:
             session.expunge(user)
             return user
 
-    def create(self, host: User, mode: Mode, signals: bool, phrases: bool) -> Room:
+    def create(
+        self, host: User, mode: Mode, signals: bool, phrases: bool, level: str = DEFAULT_LEVEL
+    ) -> Room:
         if len(self.rooms) >= MAX_ROOMS:
             self._purge()
         if len(self.rooms) >= MAX_ROOMS:
@@ -156,6 +159,7 @@ class Hub:
             host_id=host.id,
             avatars=load_pack()[1],
             rng=random.Random(self.rng.getrandbits(63)),
+            level=level,
         )
         room.join(host.id, host.username, avatars_by_id()[host.avatar_id])
         self.rooms[code] = room
@@ -488,8 +492,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             mode = Mode(body.mode)
         except ValueError as error:
             raise HTTPException(422, "Modo de juego desconocido") from error
+        if body.level not in BOT_LEVELS:
+            raise HTTPException(422, "Nivel de bots desconocido")
         try:
-            room = hub.create(user, mode, body.signals, body.phrases)
+            room = hub.create(user, mode, body.signals, body.phrases, body.level)
         except RoomError as error:
             raise HTTPException(503, str(error)) from error
         return room.lobby_view()
