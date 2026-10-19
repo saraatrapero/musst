@@ -17,6 +17,7 @@ import contextlib
 import json
 import os
 import random
+import re
 import secrets
 import time
 from collections import defaultdict
@@ -50,6 +51,7 @@ from mus_web.security import (
 )
 
 COOKIE = "musst_session"
+SAFE_HOST = re.compile(r"[A-Za-z0-9.-]+(:[0-9]{1,5})?")
 DEFAULT_DATABASE_URL = "sqlite:///musst.db"
 MAX_FAILED_LOGINS = 5
 LOCKOUT_SECONDS = 300
@@ -319,9 +321,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         request: Request, call_next: Callable[[Request], Awaitable[Response]]
     ) -> Response:
         response = await call_next(request)
+        # connect-src nombra el WebSocket del propio servidor: algunos Safari no lo
+        # incluyen en 'self'.
+        host = request.headers.get("host", "")
+        sockets = f" ws://{host} wss://{host}" if SAFE_HOST.fullmatch(host) else ""
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; "
-            "connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
+            f"connect-src 'self'{sockets}; frame-ancestors 'none'; base-uri 'none'; "
+            "form-action 'self'"
         )
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["Referrer-Policy"] = "same-origin"

@@ -135,9 +135,15 @@ async function lobby() {
   const code = h("input", { type: "text", maxlength: 6, placeholder: "ABC234" });
   const games = h("tbody");
   const profileBox = h("div", { class: "profile" }, h("p", { class: "muted" }, "Calculando tu estilo…"));
+  const createButton = h("button", { onclick: () => create() }, "Jugar");
+  mode.addEventListener("change", () => { createButton.textContent = mode.value === "con_bot" ? "Jugar" : "Crear sala"; });
   const create = async () => {
-    try { enterRoom(await api("POST", "/api/rooms", { mode: mode.value, signals: signals.checked, phrases: phrases.checked, level: level.value })); }
-    catch (e) { err.textContent = e.message; }
+    try {
+      const room = await api("POST", "/api/rooms", { mode: mode.value, signals: signals.checked, phrases: phrases.checked, level: level.value });
+      // Tú + bot: no hay nadie a quien esperar, la partida empieza ya.
+      if (room.mode === "con_bot") await api("POST", `/api/rooms/${room.code}/start`);
+      enterRoom(room);
+    } catch (e) { err.textContent = e.message; }
   };
   const join = async () => {
     try { enterRoom(await api("POST", `/api/rooms/${encodeURIComponent(code.value.trim().toUpperCase())}/join`)); }
@@ -152,7 +158,7 @@ async function lobby() {
         h("label", { class: "check" }, signals, "Con señas (los compañeros se pueden pasar señas… si nadie más mira)"),
         h("label", {}, "Nivel de los bots"), level,
         h("label", { class: "check" }, phrases, "Los bots dicen frases"),
-        h("button", { onclick: create }, "Crear sala"),
+        createButton,
         h("h3", {}, "Unirse con un código"), code, h("button", { onclick: join }, "Unirme"), err),
       h("section", { class: "panel" },
         h("h2", {}, "Mi perfil"),
@@ -201,14 +207,22 @@ async function deleteAccount() {
 
 // --- Sala y mesa ---------------------------------------------------------------------------
 
-function closeSocket() { if (state.ws) { state.ws.onclose = null; state.ws.close(); state.ws = null; } }
+function closeSocket() { const ws = state.ws; state.ws = null; state.link = ""; if (ws) { ws.onclose = null; ws.close(); } }
 
 function enterRoom(room) {
   closeSocket();
   state.room = room; state.view = null; state.selected.clear(); state.bubbles = {}; state.lastPhrase = 0;
+  state.link = "Conectando con la mesa…"; state.retries = 0;
+  connect(room.code);
+  waitingRoom();
+}
+
+// Conexión con la mesa: si se corta, se reintenta y se avisa en pantalla.
+function connect(code) {
   const proto = location.protocol === "https:" ? "wss" : "ws";
-  const ws = new WebSocket(`${proto}://${location.host}/ws/rooms/${room.code}`);
+  const ws = new WebSocket(`${proto}://${location.host}/ws/rooms/${code}`);
   state.ws = ws;
+  ws.onopen = () => { state.link = ""; state.retries = 0; render(); };
   ws.onmessage = (msg) => {
     const data = JSON.parse(msg.data);
     if (data.error) { const e = document.getElementById("table-error"); if (e) e.textContent = data.error; return; }
@@ -219,8 +233,24 @@ function enterRoom(room) {
     }
     render();
   };
-  ws.onclose = () => { state.ws = null; };
-  waitingRoom();
+  ws.onclose = (ev) => {
+    if (state.ws !== ws) return; // ya hemos salido de la sala
+    state.ws = null;
+    if (ev.code === 4401 || ev.code === 4403) {
+      state.link = "No se puede entrar en la mesa (sesión caducada o sala cerrada). Vuelve al lobby.";
+    } else if (state.retries < 10) {
+      state.retries += 1;
+      state.link = "Se ha cortado la conexión con la mesa. Reintentando…";
+      setTimeout(() => { if (!state.ws && state.room && state.room.code === code) connect(code); }, 1500 * state.retries);
+    } else {
+      state.link = "No hay conexión con la mesa. Comprueba tu conexión y recarga la página.";
+    }
+    render();
+  };
+}
+
+function linkStatus() {
+  return state.link ? h("p", { class: "error" }, state.link) : null;
 }
 
 function render() {
@@ -236,6 +266,7 @@ function waitingRoom() {
   const missing = room.human_seats.filter((s) => !room.seats[s]).length;
   mount(h("section", { class: "panel" },
     h("h2", {}, "Sala ", h("span", { class: "code" }, room.code)),
+    linkStatus(),
     h("p", {}, MODES[room.mode], " · ", room.signals ? "con señas" : "sin señas", room.mode !== "cuatro" ? ` · bots de nivel ${room.level}` : ""),
     room.mode !== "con_bot" && h("p", { class: "muted" }, "Pasa este código a tus amigos para que se unan."),
     h("ul", {}, [0, 1, 2, 3].map((s) => h("li", {}, `Asiento ${s + 1} (pareja ${s % 2 ? "B" : "A"}): `,
@@ -389,7 +420,7 @@ function tableScreen() {
   const log = h("div", { class: "log" }, g.events.map((e) => describe(e, g.names)).filter(Boolean).slice(-40).map((t) => h("div", {}, t)));
   mount(
     h("div", { class: "table" }, seats, center),
-    h("section", { class: "panel" }, actionPanel(g), h("p", { class: "error", id: "table-error" }),
+    h("section", { class: "panel" }, linkStatus(), actionPanel(g), h("p", { class: "error", id: "table-error" }),
       h("label", { class: "check" }, h("input", { type: "checkbox", checked: state.quiet, onchange: (ev) => { state.quiet = ev.target.checked; } }), "Silenciar frases")),
     h("section", { class: "panel" }, h("h3", {}, "Lo que ha pasado"), log));
   log.scrollTop = log.scrollHeight;

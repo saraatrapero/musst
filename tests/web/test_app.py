@@ -23,6 +23,9 @@ def test_index_static_and_security_headers(client: TestClient) -> None:
     assert page.status_code == 200
     assert "MUS.ST" in page.text
     assert "default-src 'self'" in page.headers["content-security-policy"]
+    assert "wss://testserver" in page.headers["content-security-policy"]
+    odd = client.get("/", headers={"host": "evil.example; script-src *"})
+    assert "evil" not in odd.headers["content-security-policy"]
     assert page.headers["x-frame-options"] == "DENY"
     assert client.get("/static/app.js").status_code == 200
     assert client.get("/docs").status_code == 404
