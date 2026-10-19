@@ -146,6 +146,7 @@ async function lobby() {
     } catch (e) { err.textContent = e.message; }
   };
   const join = async () => {
+    if (!code.value.trim()) { err.textContent = "Escribe el código de la sala de tu amigo (para jugar tú solo, pulsa «Jugar»)."; return; }
     try { enterRoom(await api("POST", `/api/rooms/${encodeURIComponent(code.value.trim().toUpperCase())}/join`)); }
     catch (e) { err.textContent = e.message; }
   };
