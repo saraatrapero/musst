@@ -15,6 +15,7 @@ AVATARS = load_pack()[1]
 
 def make_room(mode: Mode = Mode.CON_BOT, signals: bool = False, phrases: bool = True) -> Room:
     room = Room("SALA22", mode, signals, phrases, 1, AVATARS, random.Random(5))
+    room.wait_for_deal = False  # aquí se prueba el juego; el reparto, en su propio test
     room.join(1, "sara", AVATARS[0])
     return room
 
@@ -186,3 +187,22 @@ def test_bot_signals_with_signals_enabled() -> None:
     bot_seats = {s for s in ALL_SEATS if room.seats[s] is not None and room.seats[s].is_bot}  # type: ignore[union-attr]
     assert made
     assert {e.event.seat for e in made} <= bot_seats  # type: ignore[attr-defined]
+
+
+def test_bots_wait_until_a_person_deals() -> None:
+    room = Room("SALA33", Mode.CON_BOT, False, True, 1, AVATARS, random.Random(5))
+    room.join(1, "sara", AVATARS[0])
+    assert not room.awaiting_deal  # antes de empezar no hay nada que repartir
+    room.start(1, seed=2)
+    assert room.awaiting_deal
+    assert room.lobby_view()["awaiting_deal"] is True
+    assert room.bot_to_act() is None
+    with pytest.raises(RoomError, match="sentado"):
+        room.deal(9, 1)
+    with pytest.raises(RoomError, match="no válida"):
+        room.deal(1, "1")
+    room.deal(1, 5)  # una jugada que no es la actual no cuenta
+    assert room.awaiting_deal
+    room.deal(1, room.hand_number)
+    assert not room.awaiting_deal
+    assert room.dealt_hand == 1

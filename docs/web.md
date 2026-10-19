@@ -144,3 +144,17 @@ MUSST_TEST_DATABASE_URL=postgresql+psycopg://musst@127.0.0.1:5432/musst python -
   ni sustitución por un bot todavía).
 - Las salas no sobreviven a un reinicio del servidor (las partidas terminadas sí).
 - Sin espectadores: sólo quien está sentado recibe la mesa.
+
+## Reparto, resumen y naipes
+
+- Cada jugada empieza con el botón **Repartir nueva jugada**: el servidor
+  espera el mensaje `{"deal": n}` antes de que hablen los bots, y la web
+  anima el reparto carta a carta desde la baraja de quien reparte (a la
+  izquierda de la mano).
+- Al acabar la jugada se explica la puntuación lance a lance (Grande,
+  Chica, Pares, Juego) y después el resultado con amarracos y piedras.
+- Los naipes se dibujan en SVG (`static/cards.js`). Para usar imágenes de
+  una baraja real basta con dejar `static/cards/<código>.png` (ver
+  `static/cards/LEEME.md`); `/api/deck` indica cuáles hay.
+- Las frases de los avatares se leen en voz alta con la síntesis de voz
+  del navegador (botón 🔊 para activarla o silenciarla).

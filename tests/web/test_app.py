@@ -31,6 +31,10 @@ def test_index_static_and_security_headers(client: TestClient) -> None:
     assert client.get("/docs").status_code == 404
 
 
+def test_deck_without_images(client: TestClient) -> None:
+    assert client.get("/api/deck").json() == {"images": []}
+
+
 def test_avatars_endpoint(client: TestClient) -> None:
     data = client.get("/api/avatars").json()
     assert "parodia" in data["aviso"]
@@ -45,6 +49,9 @@ def test_avatar_images_are_listed(tmp_path: Any, monkeypatch: pytest.MonkeyPatch
     for name in ("frente.png", "contento.png", "otra.png", "LEEME.md"):
         (static / "avatars" / "marquesa" / name).write_bytes(b"x")
     (static / "index.html").write_text("MUS.ST")
+    (static / "cards").mkdir()
+    for name in ("12O.png", "99X.png", "LEEME.md"):
+        (static / "cards" / name).write_bytes(b"x")
 
     class FakeResources:
         @staticmethod
@@ -54,7 +61,9 @@ def test_avatar_images_are_listed(tmp_path: Any, monkeypatch: pytest.MonkeyPatch
     monkeypatch.setattr(app_module, "resources", FakeResources)
     with TestClient(create_app(fast_settings())) as client:
         avatars = {a["id"]: a["images"] for a in client.get("/api/avatars").json()["avatars"]}
+        deck = client.get("/api/deck").json()
     assert avatars["marquesa"] == ["contento", "frente"]
+    assert deck == {"images": ["12O"]}
     assert avatars["tentador"] == []
 
 
@@ -242,6 +251,9 @@ def play_over_socket(
             if game["winner"] is not None:
                 assert game["phase"] == "game_over"
                 return view
+            if view["room"]["awaiting_deal"]:
+                socket.send_json({"deal": game["hand_number"]})
+                continue
             if game["seat"] in game["to_act"]:
                 time.sleep(think)
                 socket.send_json({"action": choose(game, rng)})
@@ -329,7 +341,15 @@ def test_socket_messages_are_validated(client: TestClient) -> None:
     client.post(f"/api/rooms/{code}/start")
     with client.websocket_connect(f"/ws/rooms/{code}") as socket:
         socket.receive_json()
-        for bad in ("x" * 5000, "{no json", "[1]", '{"action": {"type": "mus"}, "x": 1}'):
+        bad_messages = (
+            "x" * 5000,
+            "{no json",
+            "[1]",
+            '{"action": {"type": "mus"}, "x": 1}',
+            '{"action": {"type": "mus"}}',  # antes de repartir
+            '{"deal": "uno"}',
+        )
+        for bad in bad_messages:
             socket.send_text(bad)
             reply = socket.receive_json()
             while "error" not in reply:
@@ -453,6 +473,7 @@ def test_profile_of_a_deleted_user_is_not_saved(client: TestClient) -> None:
     client.post(f"/api/rooms/{code}/start")
     hub: Hub = client.app.state.hub  # type: ignore[attr-defined]
     room = hub.rooms[code]
+    room.wait_for_deal = False
     client.request("DELETE", "/api/me", json={"password": "contraseña1"})
     while not room.finished:
         seat = room.bot_to_act()

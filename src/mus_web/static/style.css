@@ -47,7 +47,7 @@ table.list td, table.list th { border-bottom: 1px solid var(--line); padding: 4p
 .code { font-family: ui-monospace, monospace; font-size: 1.4rem; letter-spacing: .15em; }
 
 /* Mesa */
-.table { position: relative; background: radial-gradient(circle, var(--felt) 0%, var(--felt-dark) 100%); border-radius: 24px; min-height: 560px; color: #fff; display: grid; grid-template-areas: ". top ." "left center right" ". bottom ."; grid-template-columns: 1fr 1.6fr 1fr; grid-template-rows: auto 1fr auto; gap: 8px; padding: 12px; }
+.table { position: relative; background: radial-gradient(circle, var(--felt) 0%, var(--felt-dark) 100%); border-radius: 24px; min-height: 560px; color: #fff; display: grid; grid-template-areas: ". top ." "left center right" ". bottom ."; grid-template-columns: minmax(0,1fr) minmax(0,1.6fr) minmax(0,1fr); grid-template-rows: auto 1fr auto; gap: 8px; padding: 12px; }
 .seat { text-align: center; position: relative; }
 .seat.pos0 { grid-area: bottom; }
 .seat.pos1 { grid-area: right; align-self: center; }
@@ -214,7 +214,8 @@ details.history summary { cursor: pointer; font-weight: 700; }
 .seat .cards { flex-wrap: nowrap; }
 .seat .plate { max-width: 100%; }
 @media (max-width: 700px) {
-  .actionbar { padding: 6px; border-radius: 12px; }
+  .actionbar { padding: 6px; border-radius: 12px; position: static; }
+  .actionbar .signals { font-size: .8rem; padding: 6px; }
   .actionbar .phase { display: none; }
   .actionbar .buttons { grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); gap: 5px; }
   button.big { font-size: .85rem; padding: 9px 4px; border-radius: 10px; }
@@ -222,3 +223,57 @@ details.history summary { cursor: pointer; font-weight: 700; }
   .teambox .big { font-size: 1.3rem; }
   .teambox { padding: 6px 8px; }
 }
+
+/* ===== Naipes dibujados (cards.js) ===== */
+.card { background: none !important; border: none !important; box-shadow: none !important; overflow: visible; padding: 0; outline: none; }
+.card svg.naipe, .card img { width: 100%; height: 100%; display: block; filter: drop-shadow(0 4px 6px rgba(0,0,0,.45)); border-radius: 8%; }
+.card { width: clamp(70px, 15vw, 118px); height: clamp(105px, 22.5vw, 177px); }
+.card.mini { width: 40px; height: 60px; }
+.card.sel { transform: translateY(-16px); }
+.card.sel svg.naipe { filter: drop-shadow(0 0 0 #f6c453) drop-shadow(0 0 10px #f6c453); }
+.card.glow svg.naipe { filter: drop-shadow(0 0 6px #f6c453) drop-shadow(0 0 2px #f6c453); }
+.card.fly { animation: fly-in .32s ease-out; }
+@keyframes fly-in { from { transform: translate(var(--fx), var(--fy)) rotate(-25deg) scale(.6); opacity: .2; } to { transform: none; opacity: 1; } }
+.hand-row { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 64px; }
+.deck { display: flex; flex-direction: column; align-items: center; color: #f6c453; font-weight: 700; }
+.deck .card.mini { box-shadow: 3px 3px 0 #6b1d22, 6px 6px 0 #4d1418 !important; border-radius: 6px; }
+
+/* Panel de reparto */
+.dealpanel { background: rgba(20,12,8,.85); border: 2px solid #f6c453; border-radius: 16px; padding: 16px; text-align: center; max-width: 360px; }
+.dealpanel button { width: 100%; }
+
+/* Amarracos y piedras */
+.teambox { flex-direction: column; align-items: stretch; }
+.tb-head { display: flex; align-items: center; gap: 8px; }
+.teambox.theirs .tb-head { justify-content: flex-end; }
+.stones small { display: block; font-weight: 700; margin-bottom: 4px; }
+.stonepile { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; min-height: 26px; }
+.amarraco { width: 22px; height: 22px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #f3e2b5, #b8925a 55%, #6b4a22); box-shadow: 0 2px 2px rgba(0,0,0,.6); }
+.piedra { width: 12px; height: 12px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #e8e8e8, #9a9a9a 60%, #555); box-shadow: 0 1px 1px rgba(0,0,0,.6); }
+.stonecount { font-size: .72rem; color: #b8a58c; margin-top: 2px; }
+.stonesrow { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 10px 0; }
+.stonesrow .stones { background: #22150e; border-radius: 12px; padding: 8px; }
+.totals { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.totals > div { border-radius: 12px; padding: 10px; text-align: center; }
+.totals .good { background: #183a26; border: 1px solid #3fae6a; } .totals .bad { background: #3a1820; border: 1px solid #d9475f; }
+.totals b { display: block; font-size: 2rem; }
+.lancetotal { font-weight: 800; margin-top: 6px; }
+.tab.done { opacity: .7; }
+.winner ul { margin: 6px 0 0; padding-left: 20px; }
+
+/* Señas */
+.signals { margin-top: 10px; border: 1px dashed #6b4a2a; border-radius: 12px; padding: 8px; }
+.signals.ready { border: 2px solid #5fd38a; background: rgba(95,211,138,.08); }
+.signals.off { color: #b8a58c; font-size: .9rem; }
+.sig-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.sig-head .warn { color: #ff9aa9; font-weight: 700; }
+.sig-buttons { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+button.sig { display: flex; flex-direction: column; align-items: flex-start; }
+button.sig small { color: #d9c7aa; font-size: .7rem; }
+.chip.look { background: rgba(80, 120, 255, .25); }
+.signals-seen { background: #5fd38a; color: #10301c; font-weight: 800; border-radius: 10px; padding: 6px 10px; }
+.barfoot { display: flex; justify-content: flex-end; margin-top: 6px; }
+.seat { min-width: 0; }
+.seat.pos1 .cards .card.mini, .seat.pos3 .cards .card.mini { margin-left: -26px; }
+.seat.pos1 .cards .card.mini:first-child, .seat.pos3 .cards .card.mini:first-child { margin-left: 0; }
+.deck small { margin-top: 8px; }

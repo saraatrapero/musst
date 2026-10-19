@@ -380,6 +380,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             session.execute(text("SELECT 1"))
         return {"status": "ok"}
 
+    @app.get("/api/deck")
+    def deck() -> dict[str, list[str]]:
+        """Naipes con imagen propia en ``static/cards/<código>.png`` (si no, se dibujan)."""
+        folder = static.joinpath("cards")
+        valid = {f"{n}{s}" for n in (1, 2, 3, 4, 5, 6, 7, 10, 11, 12) for s in "OCEB"}
+        files = folder.iterdir() if folder.is_dir() else ()
+        codes = (f.name.removesuffix(".png") for f in files if f.name.endswith(".png"))
+        return {"images": sorted(c for c in codes if c in valid)}
+
     @app.get("/api/avatars")
     def avatars() -> dict[str, Any]:
         notice, pack = load_pack()
@@ -609,9 +618,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 message = json.loads(text)
             except json.JSONDecodeError as error:
                 raise RoomError("Mensaje no válido") from error
-            if not isinstance(message, dict) or set(message) != {"action"}:
-                raise RoomError("Se esperaba {'action': ...}")
-            room.human_action(user_id, message["action"])
+            if isinstance(message, dict) and set(message) == {"deal"}:
+                room.deal(user_id, message["deal"])
+            elif isinstance(message, dict) and set(message) == {"action"}:
+                if room.awaiting_deal:
+                    raise RoomError("Primero hay que repartir")
+                room.human_action(user_id, message["action"])
+            else:
+                raise RoomError("Se esperaba {'action': ...} o {'deal': jugada}")
         except RoomError as error:
             await socket.send_json({"error": str(error)})
             return

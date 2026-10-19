@@ -88,6 +88,10 @@ class Room:
     phrases: list[dict[str, Any]] = field(default_factory=list)
     saved: bool = False
     level: str = DEFAULT_LEVEL
+    # Cada jugada se reparte cuando una persona pulsa «Repartir» (así ve el reparto y
+    # tiene tiempo de leer la puntuación de la anterior). Los bots esperan.
+    wait_for_deal: bool = True
+    dealt_hand: int = 0
     _phrase_maker: PhraseMaker | None = None
     _seen: int = 0  # eventos ya comentados
     _phrase_count: int = 0
@@ -202,9 +206,23 @@ class Room:
             raise RoomError(str(error)) from error
         self._after_step()
 
+    @property
+    def awaiting_deal(self) -> bool:
+        """La jugada actual aún no se ha «repartido» en las pantallas de las personas."""
+        return self.wait_for_deal and self.started and self.dealt_hand < self.hand_number
+
+    def deal(self, user_id: int, hand: object) -> None:
+        """Una persona pulsa «Repartir» la jugada ``hand``."""
+        if self.seat_of(user_id) is None:
+            raise RoomError("No estás sentado en esta mesa")
+        if not isinstance(hand, int) or isinstance(hand, bool):
+            raise RoomError("Jugada no válida")
+        if hand == self.hand_number:
+            self.dealt_hand = max(self.dealt_hand, hand)
+
     def bot_to_act(self) -> SeatId | None:
         game = self._game()
-        if game.is_finished:
+        if game.is_finished or self.awaiting_deal:
             return None
         (seat,) = game.current_actors()
         return seat if self._bot(seat) is not None else None
@@ -276,6 +294,8 @@ class Room:
             "started": self.started,
             "finished": self.finished,
             "human_seats": list(self.human_seats),
+            "awaiting_deal": self.awaiting_deal,
+            "dealt_hand": self.dealt_hand,
             "seats": [None if o is None else o.public() for o in self.seats],
         }
 
