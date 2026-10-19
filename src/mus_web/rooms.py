@@ -15,11 +15,12 @@ from __future__ import annotations
 
 import random
 import string
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
+from mus_engine.ai.profiles import PlayerProfile, ProfileTracker
 from mus_engine.bots.base import Bot, BotContext
 from mus_engine.bots.medium_bot import MediumBot
 from mus_engine.bots.simple_bot import SimpleBot
@@ -137,7 +138,15 @@ class Room:
             raise RoomError("No se puede abandonar una partida empezada")
         self.seats[seat] = None
 
-    def start(self, user_id: int, seed: int, bot_factory: Callable[[], Bot] | None = None) -> None:
+    def start(
+        self,
+        user_id: int,
+        seed: int,
+        bot_factory: Callable[[], Bot] | None = None,
+        profiles: Mapping[int, PlayerProfile] | None = None,
+    ) -> None:
+        """Empieza la partida. ``profiles``: perfil guardado de cada usuario (por id),
+        que reciben los bots para jugar contra cada persona según cómo juega."""
         if user_id != self.host_id:
             raise RoomError("Sólo quien creó la sala puede empezar")
         if self.started:
@@ -149,12 +158,17 @@ class Room:
         self.rng.shuffle(free)
         config = GameConfig(signals_enabled=self.signals)
         bot_factory = bot_factory or BOT_LEVELS[self.level]
+        known = {
+            SeatId(s): (profiles or {})[o.user_id]
+            for s, o in enumerate(self.seats)
+            if o is not None and o.user_id is not None and o.user_id in (profiles or {})
+        }
         speakers: dict[SeatId, Avatar] = {}
         for seat in ALL_SEATS:
             if self.seats[seat] is None:
                 avatar = free.pop() if free else self.rng.choice(self.avatars)
                 bot = bot_factory()
-                bot.on_game_start(BotContext(seat, config, seed + seat))
+                bot.on_game_start(BotContext(seat, config, seed + seat, known))
                 self.seats[seat] = Occupant(avatar.nickname, avatar, bot=bot)
                 speakers[seat] = avatar
         names = tuple(o.name for o in self.seats if o is not None)
@@ -274,6 +288,17 @@ class Room:
         if self.game is not None:
             view["game"] = observation_to_json(self.game.get_observation(seat))
         return view
+
+    def profiles_learned(self) -> dict[int, PlayerProfile]:
+        """Lo aprendido en esta partida de cada persona (sólo información pública)."""
+        game = self._game()
+        tracker = ProfileTracker()
+        tracker.observe(game.event_log)
+        return {
+            o.user_id: tracker.profile(SeatId(s))
+            for s, o in enumerate(self.seats)
+            if o is not None and o.user_id is not None
+        }
 
     def winners(self) -> tuple[SeatId, ...]:
         game = self._game()

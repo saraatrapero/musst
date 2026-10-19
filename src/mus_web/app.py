@@ -34,9 +34,10 @@ from pydantic import BaseModel
 from sqlalchemy import select, text
 from starlette.websockets import WebSocketDisconnect
 
+from mus_engine.ai.profiles import PlayerProfile
 from mus_web.avatars_pack import avatars_by_id, load_pack
 from mus_web.codec import record_to_json
-from mus_web.db import Database, GameRow, GameSeat, LoginSession, User, utcnow
+from mus_web.db import Database, GameRow, GameSeat, LoginSession, ProfileRow, User, utcnow
 from mus_web.rooms import BOT_LEVELS, DEFAULT_LEVEL, Mode, Room, RoomError, new_code
 from mus_web.security import (
     CredentialError,
@@ -219,6 +220,12 @@ class Hub:
             with contextlib.suppress(Exception):
                 await socket.send_json(room.view_for(user_id))
 
+    def load_profiles(self, room: Room) -> dict[int, PlayerProfile]:
+        ids = [o.user_id for o in room.seats if o is not None and o.user_id is not None]
+        with self.db.session() as session:
+            rows = session.scalars(select(ProfileRow).where(ProfileRow.user_id.in_(ids))).all()
+            return {row.user_id: PlayerProfile.from_json(row.counts) for row in rows}
+
     def save(self, room: Room) -> None:
         """Guarda la partida terminada y actualiza las estadísticas de los usuarios."""
         if room.saved or room.game is None:
@@ -252,6 +259,16 @@ class Hub:
                         won=won,
                     )
                 )
+            learned = room.profiles_learned()
+            for user_id, profile in learned.items():
+                if session.get(User, user_id) is None:  # borró su cuenta durante la partida
+                    continue
+                stored = session.get(ProfileRow, user_id)
+                if stored is None:
+                    session.add(ProfileRow(user_id=user_id, counts=profile.to_json()))
+                else:
+                    total = PlayerProfile.from_json(stored.counts) + profile
+                    stored.counts = total.to_json()
 
 
 def current_user(request: Request, musst_session: Annotated[str | None, Cookie()] = None) -> User:
@@ -451,6 +468,17 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 for s in seats
             ]
 
+    def profile_json(user_id: int) -> dict[str, object]:
+        with db.session() as session:
+            row = session.get(ProfileRow, user_id)
+            profile = PlayerProfile() if row is None else PlayerProfile.from_json(row.counts)
+        return profile.summary()
+
+    @app.get("/api/me/profile")
+    def my_profile(user: CurrentUser) -> dict[str, object]:
+        """Cómo juegas, según la IA (Fase E)."""
+        return profile_json(user.id)
+
     @app.get("/api/me/export")
     def export(user: CurrentUser) -> dict[str, Any]:
         """Todos los datos del usuario (derecho de acceso)."""
@@ -461,7 +489,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 {"seat": s.seat, "won": s.won, "mode": s.game.mode, "record": s.game.record}
                 for s in row.seats
             ]
-            return {"user": me_json(row), "consent_at": row.consent_at.isoformat(), "games": games}
+            counts = {} if row.profile is None else dict(row.profile.counts)
+            return {
+                "user": me_json(row),
+                "consent_at": row.consent_at.isoformat(),
+                "games": games,
+                "profile": counts,
+            }
 
     @app.delete("/api/me")
     def delete_me(body: DeleteIn, user: CurrentUser, response: Response) -> dict[str, bool]:
@@ -528,7 +562,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def start_room(code: str, user: CurrentUser) -> dict[str, Any]:
         room = hub.room(code)
         try:
-            room.start(user.id, settings.seed_source())
+            room.start(user.id, settings.seed_source(), profiles=hub.load_profiles(room))
         except RoomError as error:
             raise room_error(error) from error
         hub.launch(room)

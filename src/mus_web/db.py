@@ -49,6 +49,26 @@ class User(Base):
     seats: Mapped[list[GameSeat]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
+    profile: Mapped[ProfileRow | None] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+
+
+class ProfileRow(Base):
+    """Perfil de juego de un usuario (Fase E): contadores de ``PlayerProfile``.
+
+    Tabla aparte para que una base de datos ya creada la añada sin migraciones.
+    """
+
+    __tablename__ = "player_profiles"
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    counts: Mapped[dict[str, int]] = mapped_column(JSON, default=dict)
+    updated_at: Mapped[datetime] = mapped_column(default=utcnow, onupdate=utcnow)
+
+    user: Mapped[User] = relationship(back_populates="profile")
 
 
 class LoginSession(Base):

@@ -125,6 +125,7 @@ function renderWho() {
 
 async function lobby() {
   closeSocket();
+  try { state.me = await api("GET", "/api/me"); } catch (e) { return authScreen(); }
   renderWho();
   const err = h("p", { class: "error" });
   const mode = h("select", {}, Object.entries(MODES).map(([k, v]) => h("option", { value: k }, v)));
@@ -133,6 +134,7 @@ async function lobby() {
   const level = h("select", {}, h("option", { value: "medio" }, "Medio: cuenta cartas y mira el marcador"), h("option", { value: "sencillo" }, "Sencillo: para empezar"));
   const code = h("input", { type: "text", maxlength: 6, placeholder: "ABC234" });
   const games = h("tbody");
+  const profileBox = h("div", { class: "profile" }, h("p", { class: "muted" }, "Calculando tu estilo…"));
   const create = async () => {
     try { enterRoom(await api("POST", "/api/rooms", { mode: mode.value, signals: signals.checked, phrases: phrases.checked, level: level.value })); }
     catch (e) { err.textContent = e.message; }
@@ -156,12 +158,26 @@ async function lobby() {
         h("h2", {}, "Mi perfil"),
         face(avatarById(me.avatar)),
         h("p", {}, `${me.games_played} partidas · ${me.games_won} ganadas`),
+        profileBox,
         h("label", {}, "Cambiar de avatar"),
         avatarPicker(me.avatar, async (id) => { state.me = await api("PUT", "/api/me/avatar", { avatar: id }); lobby(); }),
         h("button", { class: "secondary", onclick: exportData }, "Descargar mis datos"),
         h("button", { class: "danger", onclick: deleteAccount }, "Borrar mi cuenta"))),
     h("section", { class: "panel" }, h("h2", {}, "Mis últimas partidas"),
       h("table", { class: "list" }, h("thead", {}, h("tr", {}, h("th", {}, "Fecha"), h("th", {}, "Modo"), h("th", {}, "Señas"), h("th", {}, "Resultado"), h("th", {}, "Tantos"))), games)));
+  try {
+    const p = await api("GET", "/api/me/profile");
+    const pct = (x) => `${Math.round(x * 100)} %`;
+    profileBox.replaceChildren(...[
+      h("p", {}, "Tu estilo según la IA: ", h("b", {}, p.style), p.decisions ? ` (confianza ${pct(p.confidence)})` : ""),
+      p.decisions >= 8 && h("ul", { class: "muted" },
+        h("li", {}, `Envidas en ${pct(p.bet_rate)} de las ocasiones; órdago en ${pct(p.ordago_rate)}`),
+        h("li", {}, `Quieres ${pct(p.accept_rate)} de los envites y ${pct(p.accept_ordago_rate)} de los órdagos`),
+        h("li", {}, `Farol (envidar con mano mala): ${pct(p.bluff_rate)} · Ir de tapado: ${pct(p.slowplay_rate)}`),
+        h("li", {}, `Cuando vas perdiendo envidas ${pct(p.bet_rate_losing)}; si no, ${pct(p.bet_rate_even)}`)),
+      p.decisions < 8 && h("p", { class: "muted" }, "Juega unas partidas y la IA aprenderá cómo juegas."),
+    ].filter(Boolean));
+  } catch (e) { profileBox.replaceChildren(); }
   try {
     for (const g of await api("GET", "/api/me/games")) {
       games.append(h("tr", {}, h("td", {}, new Date(g.finished_at + "Z").toLocaleString()), h("td", {}, MODES[g.mode] || g.mode),

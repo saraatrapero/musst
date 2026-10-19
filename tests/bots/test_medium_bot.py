@@ -103,3 +103,29 @@ def test_medium_beats_simple() -> None:
 
 def test_medium_beats_random() -> None:
     assert _match(MediumBot, RandomBot, range(5000, 5040)) >= 0.75
+
+
+class ProfiledBot(MediumBot):
+    use_profiles = True
+    infer_from_mus_and_passes = True
+
+
+def test_profiles_and_inference_switches_play_full_games() -> None:
+    """Las variantes desactivadas por defecto (docs/ai.md) siguen funcionando."""
+    assert _match(ProfiledBot, SimpleBot, range(5000, 5010)) > 0.3
+
+
+def test_profiled_bot_reads_rivals_and_remembers() -> None:
+    from mus_engine.ai.profiles import PlayerProfile
+
+    bluffer = PlayerProfile({"open.n": 50, "open.bet": 40, "t.open.0.n": 10, "t.open.0.bet": 8})
+    game = game_at_lance(ONE_KING, tantos=(0, 0))
+    act(game, PassAction(), BetAction(2))  # el 1 envida
+    bot = ProfiledBot()
+    bot.on_game_start(BotContext(SeatId(2), GameConfig(), 1, {SeatId(1): bluffer}))
+    obs = game.get_observation(2)
+    assert bot.profile_of(SeatId(1), obs).counts["open.n"] >= 50
+    assert bot.profile_of(SeatId(3), obs).counts.get("open.n", 0) < 50
+    assert bot.decide(obs) in (AcceptAction(), RejectAction(), OrdagoAction())
+    plain = medio(2)
+    assert plain.profile_of(SeatId(1), obs) == PlayerProfile()  # sin perfiles por defecto

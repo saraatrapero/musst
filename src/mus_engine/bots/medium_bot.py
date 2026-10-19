@@ -9,25 +9,35 @@ Nivel medio del diseño (``docs/ai-design.md`` §4): usa los agentes de la Fase 
 - :class:`~mus_engine.ai.score.ScoreAgent`: cada resultado se valora por cómo cambia la
   probabilidad de ganar la partida. De ahí sale la agresividad: con el rival a punto de
   ganar, arriesga (órdagos, querer más); con la partida encarrilada, no regala nada.
+- :class:`~mus_engine.ai.profiles.PlayerProfile` (Fase E): cómo juega cada rival —lo
+  que trae guardado (``BotContext.profiles``) más lo que ve en esta partida—. Con
+  ``use_profiles`` activado, «me ha envidado» o «me quiere» se traduce en qué manos
+  son probables según ese jugador (desactivado por defecto: ver ``docs/ai.md``).
 
 En cada envite compara el valor esperado de pasar, envidar, subir, querer, no querer y
-echar órdago, y elige el mayor. Como todavía no perfila a los rivales (Fase E), supone
-que se retiran con una frecuencia fija. Las señas, como el bot sencillo.
+echar órdago, y elige el mayor. Las señas, como el bot sencillo.
 """
 
 from __future__ import annotations
 
 from collections import Counter
+from collections.abc import Callable, Mapping
 from itertools import combinations, combinations_with_replacement
 from math import comb
+from typing import ClassVar
 
 from mus_engine.ai.classes import classes_by_ranks
 from mus_engine.ai.counting import CardCounter, Knowledge
-from mus_engine.ai.equity import lance_equity, team_equity
+from mus_engine.ai.equity import View, lance_equity, team_equity
+from mus_engine.ai.inference import inclination, mus_signals
+from mus_engine.ai.profiles import BIN_NAMES, PlayerProfile, ProfileTracker, tier
 from mus_engine.ai.score import ScoreAgent
 from mus_engine.betting.bets import BetStatus
+from mus_engine.bots.base import BotContext
 from mus_engine.bots.simple_bot import SimpleBot
 from mus_engine.cards.card import Card
+from mus_engine.cards.ranking import RankingPolicy
+from mus_engine.events.events import LanceStarted, Passed
 from mus_engine.game.actions import (
     AcceptAction,
     Action,
@@ -46,13 +56,6 @@ from mus_engine.players.seating import ALL_SEATS, SeatId, opponent, team_of
 from mus_engine.rules.lance import LanceType
 from mus_engine.rules.lances import jugada_points
 
-# Suposiciones sobre los rivales mientras no haya perfiles (Fase E): qué fracción de
-# sus manos (las mejores) usan para querer o para envidar.
-ACCEPT_BET = 0.6  # un rival quiere un envite con su 60 % mejor
-ACCEPT_ORDAGO = 0.2
-BETS_WITH = 0.45  # quien envida tiene una mano de su 45 % mejor
-RAISES_WITH = 0.3
-ORDAGOS_WITH = 0.15
 # Quien ya ha envidado tiene buena mano: casi siempre quiere si le subo.
 PROPOSER_ACCEPTS_RAISE = 0.85
 PROPOSER_ACCEPTS_ORDAGO = 0.5
@@ -72,8 +75,32 @@ LANCE_WEIGHTS = {
 
 
 class MediumBot(SimpleBot):
+    # Deducir la mano de los rivales de su mus y de sus pases (``ai/inference.py``)
+    # calibra mejor las probabilidades pero, en las pruebas, no gana más partidas: queda
+    # desactivado hasta la inferencia completa de la Fase F (docs/ai.md).
+    infer_from_mus_and_passes: ClassVar[bool] = False
+    # Usar el perfil de cada rival para interpretar sus envites y prever si querrá.
+    # Medido en la Fase E, no mejora frente a los valores ajustados de la Fase D (65 %
+    # contra el sencillo en ambos casos; algo peor contra un farolero): desactivado
+    # hasta la Fase F. Los perfiles se siguen calculando y guardando.
+    use_profiles: ClassVar[bool] = False
+
     name = "medio"
-    description = "Cuenta cartas, calcula la probabilidad exacta de cada lance y mira el marcador."
+    description = (
+        "Cuenta cartas, calcula la probabilidad exacta de cada lance, "
+        "mira el marcador y perfila a los rivales."
+    )
+
+    def on_game_start(self, context: BotContext) -> None:
+        super().on_game_start(context)
+        self._tracker = ProfileTracker(RankingPolicy.from_config(context.config))
+
+    def profile_of(self, seat: SeatId, observation: Observation) -> PlayerProfile:
+        """Perfil de ``seat``: lo guardado de otras partidas más lo visto en ésta."""
+        self._tracker.observe(observation.events)
+        if not self.use_profiles:
+            return PlayerProfile()
+        return self.context.profiles.get(seat, PlayerProfile()) + self._tracker.profile(seat)
 
     def decide(self, observation: Observation) -> Action:
         if observation.phase is Phase.MUS_DECISION:
@@ -158,8 +185,8 @@ class MediumBot(SimpleBot):
             options.append((values.ordago(), OrdagoAction()))
         else:
             assert bet.proposer is not None
-            shown = ORDAGOS_WITH if bet.is_ordago else RAISES_WITH if bet.accepted else BETS_WITH
-            values.facing(bet.proposer, shown)
+            kind = "ordago" if bet.is_ordago else "raise" if bet.accepted else "bet"
+            values.facing(bet.proposer, kind)
             options.append((values.reject(bet), RejectAction()))
             if bet.is_ordago:
                 options.append((values.equity(), AcceptAction()))
@@ -176,9 +203,9 @@ class MediumBot(SimpleBot):
 class _Values:
     """Valor esperado (probabilidad de ganar la partida) de cada opción de envite.
 
-    Modelo de los rivales: quieren o envidan sólo con sus mejores manos (las fracciones
-    de arriba). Así, «me quieren» y «me envidan» se traducen en condicionar sus manos a
-    ese tramo y recalcular de forma exacta mi probabilidad de ganar el lance.
+    Con el perfil de cada rival, «me han envidado» y «me quieren» se traducen en
+    reponderar sus manos posibles (regla de Bayes, :meth:`Distribution.tilt`) y
+    recalcular de forma exacta mi probabilidad de ganar el lance.
     """
 
     def __init__(self, bot: MediumBot, obs: Observation, lance: LanceType, knowledge: Knowledge):
@@ -186,6 +213,7 @@ class _Values:
         self.policy = bot._policy
         self.knowledge = knowledge
         self.rivals = tuple(s for s in ALL_SEATS if team_of(s) is not team)
+        self.profiles = {r: bot.profile_of(r, obs) for r in self.rivals}
         self.mine = obs.score.tantos_of(team)
         self.theirs = obs.score.tantos_of(opponent(team))
         self.score = ScoreAgent(obs.target_score)
@@ -193,16 +221,65 @@ class _Values:
         self.lance = lance
         self.my_jugada = jugada_points(lance, obs.my_hand, bot.context.config)
         self.rival_jugada = RIVAL_JUGADA.get(lance, 0)
-        self.windows: dict[SeatId, tuple[float, float]] = {}
+        self.views: dict[SeatId, View] = {}
+        if bot.infer_from_mus_and_passes:
+            self._mus_signals(bot, obs)
+            self._passes(bot, obs)
 
-    def equity(self, extra: dict[SeatId, tuple[float, float]] | None = None) -> float:
-        windows = dict(self.windows)
-        windows.update(extra or {})
-        return team_equity(self.knowledge, self.lance, self.policy, windows)
+    def _add(self, seat: SeatId, view: View) -> None:
+        base = self.views.get(seat)
+        self.views[seat] = view if base is None else _compose(base, view)
 
-    def facing(self, proposer: SeatId, top: float) -> None:
-        """El rival ``proposer`` ha envidado: tiene una mano de su ``top`` mejor."""
-        self.windows[proposer] = (1.0 - top, 1.0)
+    def _mus_signals(self, bot: MediumBot, obs: Observation) -> None:
+        """El rival que ha cortado el mus suele llevar buena mano; el que lo ha pedido, no.
+
+        Sólo a los rivales: a mi compañero lo trato como una mano cualquiera, que es lo
+        que mejor ha funcionado en las pruebas (docs/ai.md).
+        """
+        for seat, signal in mus_signals(obs.events, obs.hand_number).items():
+            if seat in self.rivals:
+                beta = bot.profile_of(seat, obs).mus_beta(signal, self.lance)
+                self._add(seat, _inclined(beta))
+
+    def _passes(self, bot: MediumBot, obs: Observation) -> None:
+        """Un rival que ya ha pasado en este lance suele tener una mano floja (regla de
+        Bayes con su perfil)."""
+        start = max(
+            (
+                e.seq
+                for e in obs.events
+                if isinstance(e.event, LanceStarted)
+                and e.event.lance == self.lance.value
+                and e.hand_number == obs.hand_number
+            ),
+            default=None,
+        )
+        if start is None:
+            return
+        passed = {
+            e.event.seat
+            for e in obs.events
+            if e.seq > start and isinstance(e.event, Passed) and e.event.seat in self.rivals
+        }
+        for seat in passed:
+            profile = bot.profile_of(seat, obs)
+            self._add(seat, _passes(profile))
+
+    def equity(self, extra: Mapping[SeatId, View] | None = None) -> float:
+        views = dict(self.views)
+        for seat, view in (extra or {}).items():
+            base = views.get(seat)
+            views[seat] = view if base is None else _compose(base, view)
+        return team_equity(self.knowledge, self.lance, self.policy, views)
+
+    def facing(self, proposer: SeatId, kind: str) -> None:
+        """El rival ``proposer`` ha envidado (``bet``), subido (``raise``) u ordagado.
+
+        Su envite sustituye a lo que se deducía de su mus y de sus pases: van muy ligados
+        (quien corta suele envidar) y contarlos a la vez lo haría parecer más fuerte.
+        """
+        top, leak = self.profiles[proposer].behaviour(kind)
+        self.views[proposer] = _does(top, leak)
 
     def _win_points(self, amount: int) -> int:
         if self.lance in (LanceType.GRANDE, LanceType.CHICA):
@@ -228,26 +305,31 @@ class _Values:
         extra = 1 if self.lance is LanceType.PUNTO else 0
         return self.score.outcome(self.mine, self.theirs, points + jugada + extra, 0)
 
-    def _team_response(self, accept: float) -> tuple[float, float]:
-        """(P(no me quieren), P(gano el lance | me quieren)) si cada rival quiere con su
-        ``accept`` mejor: no quieren sólo si los dos tienen manos flojas."""
-        fold = (1.0 - accept) ** 2
+    def _team_response(self, ordago: bool) -> tuple[float, float]:
+        """(P(no me quieren), P(gano el lance | me quieren)).
+
+        Cada rival quiere según su perfil (su ``top`` de manos más alguna mala); no me
+        quieren sólo si los dos dicen que no.
+        """
+        kind = "accept_ordago" if ordago else "accept"
+        behaviour = {r: self.profiles[r].behaviour(kind) for r in self.rivals}
+        fold = 1.0
+        for top, leak in behaviour.values():
+            fold *= (1 - top) * (1 - leak)
         p = self.equity()
-        weak = self.equity({r: (0.0, 1.0 - accept) for r in self.rivals})
-        return fold, (p - fold * weak) / (1.0 - fold)
+        weak = self.equity({r: _declines(top, leak) for r, (top, leak) in behaviour.items()})
+        return fold, min(1.0, max(0.0, (p - fold * weak) / (1.0 - fold)))
 
     def _proposer_response(self, proposer: SeatId, accept: float) -> tuple[float, float]:
-        """Lo mismo cuando responde sólo quien ya envidó (con su tramo actual)."""
-        low, high = self.windows.get(proposer, (0.0, 1.0))
-        cut = high - (high - low) * accept
-        return 1.0 - accept, self.equity({proposer: (cut, high)})
+        """Lo mismo cuando responde sólo quien ya envidó: quiere con su ``accept`` mejor."""
+        return 1.0 - accept, self.equity({proposer: lambda d: d.window(1.0 - accept, 1.0)})
 
     def bet(self, amount: int) -> float:
-        fold, p = self._team_response(ACCEPT_BET)
+        fold, p = self._team_response(ordago=False)
         return fold * self._uncontested(1) + (1 - fold) * self.showdown(amount, p)
 
     def ordago(self) -> float:
-        fold, p = self._team_response(ACCEPT_ORDAGO)
+        fold, p = self._team_response(ordago=True)
         return fold * self._uncontested(1) + (1 - fold) * p
 
     def raise_(self, bet: PublicBetView, amount: int) -> float:
@@ -266,3 +348,38 @@ class _Values:
         points = 1 if bet.accepted == 0 else bet.accepted + 1
         jugada = self.rival_jugada if self.lance in (LanceType.PARES, LanceType.JUEGO) else 0
         return self.score.outcome(self.mine, self.theirs, 0, points + jugada)
+
+
+def _acts(top: float, leak: float) -> Callable[[float], float]:
+    """P(actúa | percentil): seguro con su ``top`` mejor, con prob. ``leak`` si no."""
+    return lambda percentile: 1.0 if percentile >= 1.0 - top else leak
+
+
+def _does(top: float, leak: float) -> View:
+    """Sus manos si ha hecho la acción (envidar, querer…)."""
+    acts = _acts(top, leak)
+    return lambda d: d.tilt(acts)
+
+
+def _declines(top: float, leak: float) -> View:
+    """Sus manos si no la ha hecho (ha pasado, no quiere…)."""
+    acts = _acts(top, leak)
+    return lambda d: d.tilt(lambda q: 1 - acts(q))
+
+
+def _passes(profile: PlayerProfile) -> View:
+    """Sus manos si ha pasado: P(pasa | fuerza) = 1 − P(envida | tramo) de su perfil.
+
+    Más suave que :func:`_declines`: con buena mano también se pasa a veces.
+    """
+    weights = [1 - profile.bet_given(b) for b in range(len(BIN_NAMES))]
+    return lambda d: d.tilt(lambda q: weights[tier(q)])
+
+
+def _inclined(beta: float) -> View:
+    weight = inclination(beta)
+    return lambda d: d.tilt(weight)
+
+
+def _compose(first: View, then: View) -> View:
+    return lambda d: then(first(d))

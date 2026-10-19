@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
 
 import mus_web.app as app_module
+from mus_engine.players.seating import SeatId
 from mus_web.app import Hub, create_app
 from mus_web.rooms import Room
 
@@ -418,3 +419,50 @@ def test_postgres_urls_use_psycopg(url: str, expected: str) -> None:
 
 def test_health_check(client: TestClient) -> None:
     assert client.get("/healthz").json() == {"status": "ok"}
+
+
+def test_profile_is_learned_and_given_to_the_bots(client: TestClient) -> None:
+    register(client)
+    assert client.get("/api/me/profile").json()["style"] == "por conocer"
+    code = start_room(client)
+    client.post(f"/api/rooms/{code}/start")
+    play_over_socket(client, code)
+    profile = client.get("/api/me/profile").json()
+    assert profile["decisions"] > 0
+    assert profile["games"] == 1
+    assert client.get("/api/me/export").json()["profile"]["games"] == 1
+    # Segunda partida: los bots reciben lo aprendido de la persona.
+    second = start_room(client)
+    client.post(f"/api/rooms/{second}/start")
+    hub: Hub = client.app.state.hub  # type: ignore[attr-defined]
+    room = hub.rooms[second]
+    for occupant in room.seats:
+        assert occupant is not None
+        if occupant.bot is not None:
+            assert occupant.bot.context.profiles[SeatId(0)].counts["games"] == 1
+    play_over_socket(client, second)
+    assert client.get("/api/me/profile").json()["games"] == 2
+
+
+def test_profile_of_a_deleted_user_is_not_saved(client: TestClient) -> None:
+    register(client)
+    code = start_room(client)
+    client.post(f"/api/rooms/{code}/start")
+    hub: Hub = client.app.state.hub  # type: ignore[attr-defined]
+    room = hub.rooms[code]
+    client.request("DELETE", "/api/me", json={"password": "contraseña1"})
+    while not room.finished:
+        seat = room.bot_to_act()
+        if seat is not None:
+            room.bot_step()
+        else:
+            assert room.game is not None
+            legal = room.view_for(1)["game"]["legal"]
+            options = [a for a in legal["actions"] if a["type"] != "signal"]
+            room.human_action(1, options[0] if options else {"type": "bet", "amount": 2})
+    hub.save(room)
+    from mus_web.db import ProfileRow
+
+    db = client.app.state.db  # type: ignore[attr-defined]
+    with db.session() as session:
+        assert session.query(ProfileRow).count() == 0

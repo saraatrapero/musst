@@ -14,7 +14,7 @@ compensa con la velocidad: unas decenas de microsegundos por lance.
 from __future__ import annotations
 
 from bisect import bisect_left
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from functools import cache
 
@@ -43,38 +43,66 @@ class Distribution:
         less = self.cumulative[i] if i < len(self.strengths) else 1.0 - self.none
         return less, 0.0
 
+    def _pieces(self) -> list[tuple[Strength | None, float]]:
+        """(fuerza, masa) de peor a mejor; no poder jugar el lance (None) es lo peor."""
+        return [(None, self.none), *zip(self.strengths, self.mass, strict=True)]
+
     def window(self, low: float, high: float) -> Distribution:
         """La distribución condicionada a estar entre los cuantiles ``low`` y ``high``.
 
-        Las manos se ordenan de peor a mejor (no poder jugar el lance es lo peor). Sirve
-        para modelar a un rival que sólo quiere (o envida) con sus mejores manos.
+        Sirve para modelar a un rival que sólo quiere (o envida) con sus mejores manos.
         """
-        pieces: list[tuple[Strength | None, float]] = [(None, self.none)]
-        pieces += list(zip(self.strengths, self.mass, strict=True))
         kept: list[tuple[Strength | None, float]] = []
         start = 0.0
-        for strength, mass in pieces:
+        for strength, mass in self._pieces():
             end = start + mass
             inside = max(0.0, min(end, high) - max(start, low))
             if inside > 0:
                 kept.append((strength, inside))
             start = end
-        total = sum(m for _, m in kept)
-        if total <= 0:
-            return self
-        none = sum(m for st, m in kept if st is None) / total
-        ordered = [(st, m / total) for st, m in kept if st is not None]
-        cumulative: list[float] = []
-        running = 0.0
-        for _, m in ordered:
-            cumulative.append(running)
-            running += m
-        return Distribution(
-            tuple(st for st, _ in ordered),
-            tuple(cumulative),
-            tuple(m for _, m in ordered),
-            none,
-        )
+        return _normalized(kept) or self
+
+    def tilt(self, weight: Callable[[float], float]) -> Distribution:
+        """La distribución reponderada por ``weight(percentil)``.
+
+        El percentil de una fuerza es su posición entre las manos que **pueden jugar** el
+        lance (0 = la peor, 1 = la mejor). Con ``weight = P(envida | percentil)`` se
+        obtiene la mano de alguien que acaba de envidar (regla de Bayes); las manos que
+        no pueden jugar el lance usan ``weight(0)``.
+        """
+        playing = 1.0 - self.none
+        pieces: list[tuple[Strength | None, float]] = [(None, self.none * weight(0.0))]
+        for strength, cumulative, mass in zip(
+            self.strengths, self.cumulative, self.mass, strict=True
+        ):
+            percentile = (cumulative + mass / 2) / playing
+            pieces.append((strength, mass * weight(percentile)))
+        return _normalized(pieces) or self
+
+    def percentile(self, strength: Strength) -> float:
+        """Percentil de ``strength`` entre las manos que pueden jugar el lance."""
+        less, equal = self.below(strength)
+        playing = 1.0 - self.none
+        return 0.5 if playing <= 0 else min(1.0, (less + equal / 2) / playing)
+
+
+def _normalized(pieces: list[tuple[Strength | None, float]]) -> Distribution | None:
+    total = sum(m for _, m in pieces)
+    if total <= 0:
+        return None
+    none = sum(m for st, m in pieces if st is None) / total
+    ordered = [(st, m / total) for st, m in pieces if st is not None and m > 0]
+    cumulative: list[float] = []
+    running = 0.0
+    for _, m in ordered:
+        cumulative.append(running)
+        running += m
+    return Distribution(
+        tuple(st for st, _ in ordered),
+        tuple(cumulative),
+        tuple(m for _, m in ordered),
+        none,
+    )
 
 
 def distribution(
@@ -124,19 +152,20 @@ def _beats(
     return rival.none + less + (equal if closer else 0.0)
 
 
-Window = tuple[float, float]
+View = Callable[[Distribution], Distribution]
 
 
 def team_equity(
     knowledge: Knowledge,
     lance: LanceType,
     policy: RankingPolicy,
-    windows: Mapping[SeatId, Window] | None = None,
+    views: Mapping[SeatId, View] | None = None,
 ) -> float:
     """P(que mi pareja gane ``lance``), contando con la mano de mi compañero.
 
-    ``windows`` condiciona la mano de algunos asientos a un tramo de cuantiles: por
-    ejemplo ``{rival: (0.6, 1.0)}`` si ese rival sólo envida con su 40 % mejor.
+    ``views`` transforma lo que se sabe de la mano de algunos asientos: por ejemplo
+    ``{rival: lambda d: d.window(0.6, 1.0)}`` si ese rival sólo envida con su 40 %
+    mejor, o ``d.tilt(...)`` con lo que dice su perfil.
     """
     me = knowledge.seat
     mate = partner(me)
@@ -146,8 +175,8 @@ def team_equity(
         s: distribution(lance, knowledge.available, policy, knowledge.pares[s], knowledge.juego[s])
         for s in (mate, *rivals)
     }
-    for seat, (low, high) in (windows or {}).items():
-        dists[seat] = dists[seat].window(low, high)
+    for seat, view in (views or {}).items():
+        dists[seat] = view(dists[seat])
     mano = knowledge.mano
 
     def win_with(best: Strength | None, best_seat: SeatId) -> float:
