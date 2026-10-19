@@ -62,6 +62,10 @@ PROPOSER_ACCEPTS_ORDAGO = 0.5
 RIVAL_JUGADA = {LanceType.PARES: 2, LanceType.JUEGO: 2}  # valor medio de su jugada
 BIG_BET_EQUITY = 0.8  # con más de esto, se envida más fuerte
 BIG_BET_EXTRA = 2
+# Órdago sólo si, cuando se lo quieran, cree que gana el lance (o si va a perder la
+# partida de todos modos y no le queda otra que arriesgar).
+ORDAGO_MIN_WIN = 0.6
+DESPERATE = 0.15  # P(ganar la partida) por debajo de la cual arriesga sin más
 
 # Mus: ventaja esperada en tantos para cortar, y peso de cada lance.
 CUT_EDGE = 0.5
@@ -182,7 +186,8 @@ class MediumBot(SimpleBot):
                 if values.equity() >= BIG_BET_EQUITY:
                     amount += BIG_BET_EXTRA
                 options.append((values.bet(amount), BetAction(amount)))
-            options.append((values.ordago(), OrdagoAction()))
+            if values.ordago_is_sound(values.ordago_win()):
+                options.append((values.ordago(), OrdagoAction()))
         else:
             assert bet.proposer is not None
             kind = "ordago" if bet.is_ordago else "raise" if bet.accepted else "bet"
@@ -195,7 +200,8 @@ class MediumBot(SimpleBot):
                 if legal.raise_ is not None and bet.pending < values.my_missing:
                     amount = legal.raise_.minimum
                     options.append((values.raise_(bet, amount), RaiseAction(amount)))
-                options.append((values.counter_ordago(bet), OrdagoAction()))
+                if values.ordago_is_sound(values.counter_ordago_win(bet)):
+                    options.append((values.counter_ordago(bet), OrdagoAction()))
         choices = [(v, a) for v, a in options if legal.contains(a)]
         return max(choices, key=lambda item: item[0])[1]
 
@@ -327,6 +333,19 @@ class _Values:
     def bet(self, amount: int) -> float:
         fold, p = self._team_response(ordago=False)
         return fold * self._uncontested(1) + (1 - fold) * self.showdown(amount, p)
+
+    def ordago_win(self) -> float:
+        """P(ganar el lance) si le quieren el órdago."""
+        return self._team_response(ordago=True)[1]
+
+    def counter_ordago_win(self, bet: PublicBetView) -> float:
+        assert bet.proposer is not None
+        return self._proposer_response(bet.proposer, PROPOSER_ACCEPTS_ORDAGO)[1]
+
+    def ordago_is_sound(self, win: float) -> bool:
+        """Sólo se echa si cree que lo gana, salvo que la partida esté casi perdida."""
+        desperate = self.score.win(self.mine, self.theirs) < DESPERATE
+        return win >= ORDAGO_MIN_WIN or desperate
 
     def ordago(self) -> float:
         fold, p = self._team_response(ordago=True)

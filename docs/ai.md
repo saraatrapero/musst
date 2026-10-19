@@ -198,3 +198,11 @@ Lecciones del proceso (para la defensa):
    ojo compensaban ese sesgo; al darle datos reales, la compensación desaparecía.
 3. Deducir que «quien pasa va flojo» de forma tajante hundía el rendimiento: con buenas
    manos también se pasa. La versión suave usa P(pasa | fuerza) del perfil.
+
+### Órdagos prudentes (petición de la usuaria)
+
+El bot medio sólo echa (o devuelve) un órdago si, cuando se lo quieran, calcula al
+menos un 60 % de ganar el lance (`ORDAGO_MIN_WIN`), salvo que la partida esté casi
+perdida (P(ganar) < 15 %, `DESPERATE`), en cuyo caso arriesga como antes. Además de
+hacer las partidas contra personas menos «a una carta», gana más: 68 % contra el
+sencillo (400 partidas) y 85 % contra el aleatorio (200).
