@@ -39,7 +39,7 @@ async function api(method, path, body) {
   return data;
 }
 
-function mount(...nodes) { const app = document.getElementById("app"); app.replaceChildren(...nodes); }
+function mount(...nodes) { const app = document.getElementById("app"); app.replaceChildren(...nodes.filter((n) => n != null && n !== false)); }
 function avatarById(id) { return state.avatars.find((a) => a.id === id) || state.avatars[0]; }
 
 // --- Caras ------------------------------------------------------------------------------
@@ -125,6 +125,7 @@ function renderWho() {
 
 async function lobby() {
   closeSocket();
+  document.body.classList.remove("playing");
   try { state.me = await api("GET", "/api/me"); } catch (e) { return authScreen(); }
   renderWho();
   const err = h("p", { class: "error" });
@@ -302,28 +303,69 @@ function suitIcon(suit, size = 26) {
   } else if (suit === "C") {
     add("path", { d: "M5 4h14c0 6-3 9-6 9.5V18h3v2H8v-2h3v-4.5C8 13 5 10 5 4z", fill: c });
   } else if (suit === "E") {
-    add("path", { d: "M11 2h2v14h-2z", fill: c });
-    add("path", { d: "M6 15h12v2H6z", fill: c });
-    add("path", { d: "M11 17h2v5h-2z", fill: "#6b4f2a" });
+    add("path", { d: "M12 1l2.6 3.5V15h-5.2V4.5z", fill: c });
+    add("path", { d: "M5 15h14v2.6H5z", fill: c });
+    add("path", { d: "M10.6 17.6h2.8V23h-2.8z", fill: "#6b4f2a" });
   } else {
-    add("path", { d: "M9 3c2-1 5 0 5 2l-1 15c0 1.5-3 1.5-3 0L8 6c0-1 0-2 1-3z", fill: c });
-    add("circle", { cx: 10, cy: 9, r: 1, fill: "#1b4d1e" });
-    add("circle", { cx: 12, cy: 13, r: 1, fill: "#1b4d1e" });
+    add("path", { d: "M8 2.5c3-1.6 8-.6 8 2.6l-1.6 15.4c-.2 2-4.6 2-4.8 0L7 5.6c0-1.3.2-2.4 1-3.1z", fill: c, stroke: "#1b4d1e", "stroke-width": 1 });
+    add("circle", { cx: 10.5, cy: 8, r: 1.3, fill: "#1b4d1e" });
+    add("circle", { cx: 13, cy: 12.5, r: 1.3, fill: "#1b4d1e" });
+    add("circle", { cx: 11, cy: 16.5, r: 1.1, fill: "#1b4d1e" });
   }
   return svg;
 }
 
-const FIGURE_LETTER = { 1: "1", 10: "S", 11: "C", 12: "R" };
+const PIPS = {
+  1: [[50, 50]], 2: [[50, 26], [50, 74]], 3: [[50, 20], [50, 50], [50, 80]],
+  4: [[32, 26], [68, 26], [32, 74], [68, 74]], 5: [[32, 24], [68, 24], [50, 50], [32, 76], [68, 76]],
+  6: [[32, 20], [68, 20], [32, 50], [68, 50], [32, 80], [68, 80]],
+  7: [[32, 18], [68, 18], [50, 34], [32, 52], [68, 52], [32, 82], [68, 82]],
+};
+const FIGURE_ART = { 10: ["💂", "SOTA"], 11: ["🐎", "CABALLO"], 12: ["👑", "REY"] };
 
+// Naipe. opts: small (resúmenes), selected, glow (cuenta en el lance), onclick, back.
 function cardEl(code, opts = {}) {
-  if (!code) return h("span", { class: `card back${opts.small ? " mini" : ""}` });
+  const size = opts.small ? " mini" : "";
+  if (!code) return h("span", { class: `card back${size}` }, h("span", { class: "backlogo" }, "MUS.ST"));
   const suit = code.slice(-1), num = Number(code.slice(0, -1));
-  const label = FIGURE_LETTER[num] || String(num);
+  const eff = effectiveRank(code);
   const title = `${FIGURES[num] || num} de ${SUITS[suit]}`;
-  return h(opts.onclick ? "button" : "span",
-    { class: `card ${suit}${opts.selected ? " sel" : ""}${opts.small ? " mini" : ""}`, onclick: opts.onclick, title, "aria-label": title },
-    h("span", { class: "num" }, label), suitIcon(suit, opts.small ? 14 : 26),
-    !opts.small && h("span", { class: "num bottom" }, label));
+  const badge = eff === 12 ? "REY" : eff === 1 ? "AS" : null;
+  const cls = `card face ${suit}${size}${opts.selected ? " sel" : ""}${opts.glow ? " glow" : ""}`;
+  const body = [];
+  body.push(h("span", { class: "corner" }, String(num), suitIcon(suit, opts.small ? 10 : 14)));
+  if (badge) body.push(h("span", { class: "badge" }, badge));
+  if (!opts.small) {
+    if (FIGURE_ART[num]) {
+      const [art, name] = FIGURE_ART[num];
+      body.push(h("span", { class: "figure" }, h("span", { class: "art" }, art), suitIcon(suit, 18), h("span", { class: "fname" }, name)));
+    } else {
+      const pips = h("span", { class: "pips" });
+      for (const [x, y] of PIPS[num]) {
+        const pip = h("span", { class: "pip" });
+        pip.append(suitIcon(suit, num === 1 ? 40 : 22));
+        pip.dataset.x = x; pip.dataset.y = y;
+        pips.append(pip);
+      }
+      body.push(pips);
+    }
+    body.push(h("span", { class: "suitname" }, SUITS[suit].toUpperCase()));
+  } else {
+    body.push(h("span", { class: "minisuit" }, suitIcon(suit, 16)));
+  }
+  const el = h(opts.onclick ? "button" : "span", { class: cls, onclick: opts.onclick, title, "aria-label": title }, body);
+  // Posición de los símbolos (sin estilos en línea en el HTML: se fija desde JS).
+  for (const pip of el.querySelectorAll(".pip")) { pip.style.left = `${pip.dataset.x}%`; pip.style.top = `${pip.dataset.y}%`; }
+  return el;
+}
+
+// Naipes que cuentan en cada lance (para resaltarlos en el resumen).
+function countsIn(lance, cards) {
+  const eff = cards.map(effectiveRank);
+  if (lance === "grande") return eff.map((r) => r === 12);
+  if (lance === "chica") return eff.map((r) => r === 1);
+  if (lance === "pares") return eff.map((r) => eff.filter((x) => x === r).length >= 2);
+  return eff.map(() => true);
 }
 
 // --- Qué tengo -------------------------------------------------------------------------------
@@ -429,6 +471,11 @@ function turnBanner(g) {
 // --- Resumen de la mano -------------------------------------------------------------------------
 const REASONS = { negada: "no quisieron", envite_no_querido: "no quisieron el revoque", envite: "envite querido", paso: "en paso", pares: "pares", juego: "juego", punto: "punto", ordago: "órdago" };
 
+const LANCE_WHY = {
+  grande: "por tener las cartas más altas", chica: "por tener las cartas más bajas",
+  pares: "por mejores pares", juego: "por mejor juego", punto: "por más puntos al punto",
+};
+
 function handSummary(g) {
   const hand = g.phase === "game_over" ? g.hand_number : g.hand_number - 1;
   if (hand < 1 || state.summarySeen >= hand) return null;
@@ -436,19 +483,49 @@ function handSummary(g) {
   const points = evs.filter((e) => e.type === "PointsAwarded");
   if (!points.length) return null;
   const reveal = evs.find((e) => e.type === "HandsRevealed");
+  const hands = reveal ? reveal.data.hands : null;
   const mineTeam = g.seat % 2 ? "B" : "A";
   const who = (t) => (t === mineTeam ? "Nosotros" : "Ellos");
   const last = points[points.length - 1].data.tantos_after;
-  const close = () => { state.summarySeen = hand; render(); };
-  return h("div", { class: "overlay", onclick: (ev) => { if (ev.target === ev.currentTarget) close(); } },
-    h("div", { class: "summary panel" },
-      h("h2", {}, `Resultado de la mano ${hand}`),
-      h("ul", {}, points.map((e) => h("li", { class: e.data.team === mineTeam ? "good" : "bad" },
+  const lances = [...new Set(points.map((e) => e.data.lance))];
+  const tabs = [...lances, "resumen"];
+  if (!state.summaryTab || !tabs.includes(state.summaryTab)) state.summaryTab = tabs[0];
+  const tab = state.summaryTab;
+  const close = () => { state.summarySeen = hand; state.summaryTab = null; render(); };
+  const next = () => { const i = tabs.indexOf(tab); if (i + 1 < tabs.length) { state.summaryTab = tabs[i + 1]; render(); } else close(); };
+  let body;
+  if (tab === "resumen") {
+    body = h("div", {},
+      h("ul", { class: "pointlist" }, points.map((e) => h("li", { class: e.data.team === mineTeam ? "good" : "bad" },
         `${LANCES[e.data.lance] || e.data.lance}: +${e.data.points} ${who(e.data.team)} (${REASONS[e.data.reason] || e.data.reason})`))),
-      h("p", {}, `Marcador: nosotros ${last[mineTeam === "A" ? 0 : 1]} · ellos ${last[mineTeam === "A" ? 1 : 0]}`),
-      reveal && h("div", { class: "revealed" }, reveal.data.hands.map((cs, s) =>
-        h("div", { class: "rv" }, h("b", {}, g.names[s]), " ", h("span", { class: "cards" }, cs.map((c) => cardEl(c, { small: true }))), " ", h("small", { class: "muted" }, handInfo(cs).replace("Tu jugada: ", ""))))),
-      h("button", { onclick: close }, g.phase === "game_over" ? "Ver la mesa" : "Seguir")));
+      h("p", { class: "final" }, `Marcador: nosotros ${last[mineTeam === "A" ? 0 : 1]} · ellos ${last[mineTeam === "A" ? 1 : 0]}`));
+  } else {
+    const won = points.filter((e) => e.data.lance === tab);
+    const resolved = evs.find((e) => e.type === "LanceResolved" && e.data.lance === tab);
+    const team = won.length ? won[0].data.team : null;
+    const total = won.reduce((a, e) => a + e.data.points, 0);
+    const winnerName = resolved ? g.names[resolved.data.winner] : who(team);
+    const why = resolved ? LANCE_WHY[tab] : (won[0] && won[0].data.reason === "negada" ? "porque no se quiso el envite" : "");
+    body = h("div", {},
+      h("div", { class: `winner ${team === mineTeam ? "good" : "bad"}` },
+        h("b", {}, `👑 Gana: ${winnerName}`), winnerName !== who(team) && h("span", { class: "pill" }, who(team)),
+        h("div", {}, `${why} · +${total} piedra${total === 1 ? "" : "s"}`)),
+      hands && h("div", { class: "fourhands" }, [0, 1, 2, 3].map((s) => {
+        const glow = countsIn(tab, hands[s]);
+        const winnerSeat = resolved && resolved.data.winner === s;
+        return h("div", { class: `handbox ${s % 2 === g.seat % 2 ? "ours" : "theirs"}${winnerSeat ? " win" : ""}` },
+          h("div", { class: "hb-head" }, h("b", {}, g.names[s]), h("small", {}, s === g.seat ? "tú" : s % 2 === g.seat % 2 ? "tu pareja" : "rival")),
+          h("div", { class: "hb-info" }, handInfo(hands[s]).replace("Tu jugada: ", "")),
+          h("div", { class: "cards" }, hands[s].map((c, i) => cardEl(c, { small: true, glow: glow[i] }))));
+      })));
+  }
+  return h("div", { class: "overlay", onclick: (ev) => { if (ev.target === ev.currentTarget) close(); } },
+    h("div", { class: "summary" },
+      h("div", { class: "sum-head" }, h("h2", {}, `Mano ${hand}: ${tab === "resumen" ? "resumen" : `a la ${LANCES[tab]}`}`),
+        h("button", { class: "small", onclick: close }, g.phase === "game_over" ? "Ver la mesa" : "Saltar")),
+      h("div", { class: "tabs" }, tabs.map((t) => h("button", { class: `tab${t === tab ? " on" : ""}`, onclick: () => { state.summaryTab = t; render(); } }, t === "resumen" ? "📊 Resumen" : LANCES[t]))),
+      body,
+      h("button", { class: "big go", onclick: next }, tab === "resumen" ? (g.phase === "game_over" ? "Ver la mesa" : "Seguir jugando ▶") : "Siguiente ▶")));
 }
 
 const POS_VECTORS = [[0, 1], [1, 0], [0, -1], [-1, 0]]; // abajo, derecha, arriba, izquierda
@@ -500,46 +577,80 @@ function send(action) {
   if (state.ws && state.ws.readyState === WebSocket.OPEN) state.ws.send(JSON.stringify({ action }));
 }
 
-function actionPanel(g) {
+// Botones grandes abajo, con colores por significado.
+const ACTION_STYLE = { mus: ["🔄 PEDIR MUS", "go"], cut: ["⛔ NO HAY MUS (corto)", "stop"], pass: ["Paso", "neutral"], accept: ["✅ QUIERO", "go"], reject: ["✋ NO QUIERO", "stop"], ordago: ["🔥 ¡ÓRDAGO!", "hot"] };
+
+function actionBar(g) {
   const legal = g.legal;
   const mine = g.to_act.includes(g.seat);
-  const panel = h("div", { class: "actions" });
-  const main = legal.actions.filter((a) => a.type !== "signal" && a.type !== "discard");
-  const row = h("div", { class: "row" });
+  const bar = h("div", { class: "actionbar" });
+  bar.append(h("div", { class: "phase" }, h("span", { class: "dot" }), `Fase: ${phaseLabel(g)}`));
+  const row = h("div", { class: "buttons" });
   if (mine) {
-    for (const a of main) row.append(h("button", { onclick: () => send(a) }, ACTIONS[a.type] || a.type));
-    if (legal.bet) {
-      const amt = h("input", { type: "number", min: legal.bet.min, max: legal.bet.max ?? 40, value: legal.bet.min });
-      row.append(amt, h("button", { onclick: () => send({ type: "bet", amount: Number(amt.value) }) }, "Envido"));
+    const main = legal.actions.filter((a) => a.type !== "signal" && a.type !== "discard");
+    for (const a of main) {
+      const [label, kind] = ACTION_STYLE[a.type] || [ACTIONS[a.type] || a.type, "neutral"];
+      row.append(h("button", { class: `big ${kind}`, onclick: () => send(a) }, label));
     }
-    if (legal.raise) {
-      const amt = h("input", { type: "number", min: legal.raise.min, max: legal.raise.max ?? 40, value: legal.raise.min });
-      row.append(amt, h("button", { onclick: () => send({ type: "raise", amount: Number(amt.value) }) }, "Más"));
+    for (const [key, range, verb] of [["bet", legal.bet, "Envido"], ["raise", legal.raise, "Subo"]]) {
+      if (!range) continue;
+      for (const amount of [range.min, range.min + 2, range.min + 3]) {
+        row.append(h("button", { class: "big bet", onclick: () => send({ type: key, amount }) }, `${verb} ${amount}`));
+      }
     }
     if (g.phase === "discard") {
-      row.append(h("span", {}, "Toca las cartas que quieres cambiar "),
-        h("button", { disabled: state.selected.size === 0, onclick: () => { send({ type: "discard", cards: [...state.selected] }); state.selected.clear(); } }, `Descartar ${state.selected.size}`));
+      row.append(h("button", { class: "big go", disabled: state.selected.size === 0, onclick: () => { send({ type: "discard", cards: [...state.selected] }); state.selected.clear(); } },
+        state.selected.size ? `🔄 Cambiar ${state.selected.size} carta${state.selected.size > 1 ? "s" : ""}` : "Toca las cartas que quieres cambiar"));
     }
   } else if (g.phase !== "game_over") {
-    row.append(h("span", { class: "muted" }, `Esperando a ${g.to_act.map((s) => g.names[s]).join(", ")}…`));
+    row.append(h("div", { class: "waiting" }, `Esperando a ${g.to_act.map((s) => g.names[s]).join(", ")}…`));
   }
-  panel.append(row);
-  const signals = legal.actions.filter((a) => a.type === "signal");
+  bar.append(row);
   if (state.room.signals) {
-    const srow = h("div", { class: "row" }, h("span", {}, "Señas: "));
+    const signals = legal.actions.filter((a) => a.type === "signal");
+    const srow = h("div", { class: "signals" }, h("span", {}, "🤫 Señas: "));
     if (!signals.length) srow.append(h("span", { class: "muted" }, "ahora no puedes hacer ninguna"));
-    for (const a of signals) srow.append(h("button", { class: "secondary", onclick: () => send(a) }, SIGNALS[a.signal] || a.signal));
-    panel.append(srow);
+    for (const a of signals) srow.append(h("button", { class: "small", onclick: () => send(a) }, SIGNALS[a.signal] || a.signal));
     if (g.gaze) {
       const watching = [0, 1, 2, 3].filter((s) => s !== g.seat && g.gaze[s] === g.seat).map((s) => g.names[s]);
-      panel.append(h("p", { class: "muted" }, watching.length ? `Te miran: ${watching.join(", ")}` : "Nadie te mira ahora"));
+      srow.append(h("span", { class: "muted" }, watching.length ? ` · Te miran: ${watching.join(", ")}` : " · Nadie te mira"));
     }
+    bar.append(srow);
   }
-  return panel;
+  return bar;
+}
+
+function phaseLabel(g) {
+  if (g.phase === "mus_decision") return "Mus (¿hay o no?)";
+  if (g.phase === "discard") return "Descartes";
+  if (g.phase === "lance" && g.lance) return `A la ${LANCES[g.lance]}`;
+  return PHASES[g.phase] || g.phase;
+}
+
+function myHandChips(cards) {
+  if (cards.length !== 4) return null;
+  const info = handInfo(cards);
+  const pares = info.match(/Tu jugada: ([^·]+)/)[1].trim();
+  const juego = info.split(" · ")[1];
+  const has = (t) => !t.startsWith("sin");
+  return h("div", { class: "mychips" },
+    h("span", { class: `chip ${has(pares) ? "yes" : "no"}` }, `${has(pares) ? "✔" : "✖"} Pares: ${has(pares) ? pares : "no"}`),
+    h("span", { class: `chip ${has(juego) ? "yes" : "no"}` }, `${has(juego) ? "✔" : "✖"} Juego: ${has(juego) ? juego.replace("juego de ", "") : juego.replace("sin juego (al punto: ", "punto (")}`));
+}
+
+function scoreBox(g, ours) {
+  const team = ours ? g.seat % 2 : 1 - (g.seat % 2);
+  const tantos = g.score.tantos[team];
+  return h("div", { class: `teambox ${ours ? "ours" : "theirs"}` },
+    h("span", { class: "dot" }), h("span", { class: "tname" }, ours ? "Tu pareja" : "Rivales"),
+    h("span", { class: "big" }, String(tantos), h("small", {}, `/${g.target_score}`)),
+    h("span", { class: "pill" }, `${Math.floor(tantos / 5)} amarr.`),
+    h("span", { class: "pill" }, `${tantos % 5} piedras`));
 }
 
 function tableScreen() {
   const v = state.view, g = v.game, room = v.room, me = g.seat;
+  document.body.classList.add("playing");
   const revealed = g.revealed_hands;
   const { said, declared } = seatChips(g);
   const seats = [0, 1, 2, 3].map((s) => {
@@ -547,13 +658,14 @@ function tableScreen() {
     const occ = room.seats[s];
     const target = g.gaze ? g.gaze[s] : null;
     const [dx, dy] = gazeVector(pos, target == null ? null : (target - me + 4) % 4);
-    const tags = [s === me ? "tú" : (s % 2 === me % 2 ? "compañero" : "rival")];
+    const role = s === me ? "tú" : (s % 2 === me % 2 ? "tu pareja" : "rival");
+    const tags = [role];
     if (g.mano === s) tags.push("mano");
     if (g.dealer === s) tags.push("reparte");
     const chips = [];
     if (said[s]) chips.push(h("span", { class: `chip say${said[s].includes("ÓRDAGO") ? " hot" : ""}` }, said[s]));
-    if (s in declared.pares) chips.push(h("span", { class: `chip ${declared.pares[s] ? "yes" : "no"}` }, declared.pares[s] ? "Pares: sí" : "Pares: no"));
-    if (s in declared.juego) chips.push(h("span", { class: `chip ${declared.juego[s] ? "yes" : "no"}` }, declared.juego[s] ? "Juego: sí" : "Juego: no"));
+    if (s in declared.pares) chips.push(h("span", { class: `chip ${declared.pares[s] ? "yes" : "no"}` }, declared.pares[s] ? "Pares sí" : "Pares no"));
+    if (s in declared.juego) chips.push(h("span", { class: `chip ${declared.juego[s] ? "yes" : "no"}` }, declared.juego[s] ? "Juego sí" : "Juego no"));
     let cards;
     if (s === me) {
       cards = g.my_hand.map((c) => cardEl(c, {
@@ -561,38 +673,41 @@ function tableScreen() {
         onclick: g.phase === "discard" && g.to_act.includes(me) ? () => { state.selected.has(c) ? state.selected.delete(c) : state.selected.add(c); render(); } : null,
       }));
     } else if (revealed && revealed[s] && revealed[s].length) {
-      cards = revealed[s].map((c) => cardEl(c));
+      cards = revealed[s].map((c) => cardEl(c, { small: true }));
     } else {
       cards = [0, 1, 2, 3].map(() => cardEl(null, { small: true }));
     }
     return h("div", { class: `seat pos${pos}${g.to_act.includes(s) ? " turn" : ""}${s % 2 === me % 2 ? " ours" : " theirs"}` },
       state.bubbles[s] && h("div", { class: "bubble" }, state.bubbles[s]),
-      face(occ.avatar, dx, dy, moodFor(g, s)),
-      h("div", { class: "name" }, occ.name, occ.bot ? " 🤖" : ""),
-      h("div", { class: "tags" }, tags.join(" · ")),
+      h("div", { class: "plate" },
+        face(occ.avatar, dx, dy, moodFor(g, s)),
+        h("div", {}, h("div", { class: "name" }, occ.name, occ.bot ? " 🤖" : ""), h("div", { class: "tags" }, tags.join(" · ")))),
       chips.length > 0 && h("div", { class: "chips" }, chips),
-      h("div", { class: "cards" }, cards),
-      s === me && h("div", { class: "info" }, handInfo(g.my_hand)));
+      h("div", { class: `cards${s === me ? " mine" : ""}` }, cards),
+      s === me && myHandChips(g.my_hand));
   });
   const mineTeam = me % 2;
+  const header = h("div", { class: "gamehead" },
+    scoreBox(g, true),
+    h("div", { class: "lancepill" }, h("small", {}, "LANCE"), " ", phaseLabel(g).toUpperCase()),
+    scoreBox(g, false));
   const center = h("div", { class: "center" },
-    h("div", { class: "score" },
-      h("div", { class: "team ours" }, h("small", {}, "Nosotros"), h("b", {}, g.score.tantos[mineTeam])),
-      h("div", { class: "team theirs" }, h("small", {}, "Ellos"), h("b", {}, g.score.tantos[1 - mineTeam]))),
-    h("div", { class: "dim" }, `a ${g.target_score} tantos · mano ${g.hand_number} · ${PHASES[g.phase] || g.phase}`),
     lanceBoard(g),
     g.signals_seen.length > 0 && h("div", { class: "signals-seen" }, "Señas vistas: " + g.signals_seen.map((x) => `${g.names[x.sender]}: ${SIGNALS[x.signal]}`).join(", ")),
-    g.winner && h("h2", {}, g.winner === (mineTeam ? "B" : "A") ? "¡Habéis ganado!" : "Habéis perdido"),
-    g.winner && h("button", { onclick: lobby }, "Volver al lobby"));
+    g.winner && h("h2", {}, g.winner === (mineTeam ? "B" : "A") ? "🏆 ¡Habéis ganado!" : "Habéis perdido"),
+    g.winner && h("button", { class: "big go", onclick: () => { document.body.classList.remove("playing"); lobby(); } }, "Volver al menú"));
   const lines = g.events.map((e) => describe(e, g.names, me)).filter(Boolean).slice(-40);
   const log = h("div", { class: "log" }, lines.map((t) => h("div", {}, t)),
     state.phraseLog.slice(-5).map((p) => h("div", { class: "said" }, `💬 ${p}`)));
   mount(
+    header,
     turnBanner(g),
-    h("div", { class: "table" }, seats, center),
-    h("section", { class: "panel" }, linkStatus(), actionPanel(g), h("p", { class: "error", id: "table-error" }),
+    linkStatus(),
+    h("div", { class: "felt" }, h("div", { class: "table" }, seats, center)),
+    actionBar(g),
+    h("p", { class: "error", id: "table-error" }),
+    h("details", { class: "panel history" }, h("summary", {}, "📜 Lo que ha pasado"), log,
       h("label", { class: "check" }, h("input", { type: "checkbox", checked: state.quiet, onchange: (ev) => { state.quiet = ev.target.checked; } }), "Silenciar frases")),
-    h("section", { class: "panel" }, h("h3", {}, "Lo que ha pasado"), log),
     handSummary(g));
   log.scrollTop = log.scrollHeight;
 }
