@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import random
+import re
 import time
 from typing import Any
 
@@ -22,6 +23,8 @@ def test_index_static_and_security_headers(client: TestClient) -> None:
     page = client.get("/")
     assert page.status_code == 200
     assert "MUS.ST" in page.text
+    assert page.headers["cache-control"] == "no-cache"
+    assert re.search(r'/static/app\.js\?v=[0-9a-f]{12}"', page.text)
     assert "default-src 'self'" in page.headers["content-security-policy"]
     assert "wss://testserver" in page.headers["content-security-policy"]
     odd = client.get("/", headers={"host": "evil.example; script-src *"})
@@ -49,6 +52,8 @@ def test_avatar_images_are_listed(tmp_path: Any, monkeypatch: pytest.MonkeyPatch
     for name in ("frente.png", "contento.png", "otra.png", "LEEME.md"):
         (static / "avatars" / "marquesa" / name).write_bytes(b"x")
     (static / "index.html").write_text("MUS.ST")
+    for asset in ("style.css", "cards.js", "app.js"):
+        (static / asset).write_text("")
     (static / "cards").mkdir()
     for name in ("12O.png", "99X.png", "LEEME.md"):
         (static / "cards" / name).write_bytes(b"x")

@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import hashlib
 import json
 import os
 import random
@@ -29,7 +30,7 @@ from typing import Annotated, Any
 from urllib.parse import urlsplit
 
 from fastapi import Cookie, Depends, FastAPI, HTTPException, Request, Response, WebSocket
-from fastapi.responses import FileResponse
+from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from sqlalchemy import select, text
@@ -634,9 +635,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     # --- Web estática --------------------------------------------------------------------
 
+    # Cada despliegue cambia la versión de los ficheros: el navegador no se queda con
+    # el CSS o el JS de la versión anterior.
+    page = static.joinpath("index.html").read_text(encoding="utf-8")
+    for asset in ("style.css", "cards.js", "app.js"):
+        digest = hashlib.sha256(static.joinpath(asset).read_bytes()).hexdigest()[:12]
+        page = page.replace(f'/static/{asset}"', f'/static/{asset}?v={digest}"')
+
     @app.get("/", include_in_schema=False)
-    def index() -> FileResponse:
-        return FileResponse(str(static.joinpath("index.html")))
+    def index() -> HTMLResponse:
+        return HTMLResponse(page, headers={"Cache-Control": "no-cache"})
 
     app.mount("/static", StaticFiles(directory=str(static)), name="static")
     return app
