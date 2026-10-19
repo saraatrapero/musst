@@ -90,7 +90,8 @@ partida; y aun así la última palabra la tiene el motor, que vuelve a validar.
 | `POST /api/login`, `POST /api/logout` | sesión por cookie |
 | `GET /api/me`, `PUT /api/me/avatar` | perfil |
 | `GET /api/me/games` | últimas 50 partidas |
-| `GET /api/me/export` | todos mis datos en JSON (derecho de acceso) |
+| `GET /api/me/profile` | cómo juegas según la IA: estilo, confianza y frecuencias (Fase E) |
+| `GET /api/me/export` | todos mis datos en JSON, perfil incluido (derecho de acceso) |
 | `DELETE /api/me` | `{password}`: borra la cuenta, sus sesiones y su participación; su nombre se sustituye por «(cuenta borrada)» en los registros guardados |
 | `POST /api/rooms` | `{mode, signals, phrases, level}` (`level`: `medio` o `sencillo`) |
 | `GET /api/rooms/{código}` · `POST .../join` · `POST .../leave` · `POST .../start` | salas |

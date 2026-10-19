@@ -17,7 +17,7 @@ python -m pytest --cov=mus_engine --cov-report=term-missing
 | `tests/integration/` | uso de `Game` de extremo a extremo con semilla; partidas completas cuando estén todos los lances |
 | `tests/bots/` | conformidad de todos los bots registrados (requisito 2.2), decisiones de los bots incluidos, registro y robustez del torneo con bots defectuosos (`faulty.py`) |
 | `tests/security/` | información privada (eventos visibles por jugador) e inmutabilidad |
-| `tests/ai/` | agentes de la IA: clases de mano, conteo, probabilidad exacta frente a repartos reales, tabla del marcador |
+| `tests/ai/` | agentes de la IA: clases de mano, conteo, probabilidad exacta frente a repartos reales, tabla del marcador, perfiles (estilos de los bots, farolero detectado, reglas de etiquetas) e inferencia por el mus |
 | `tests/web/` | la web: contraseñas y sesiones, paquete de avatares, codec JSON estricto, frases, salas de los tres modos, API, WebSocket (partidas completas, cada jugador sólo ve sus cartas, `Origin`), borrado de cuenta |
 
 ## Cómo añadir un test

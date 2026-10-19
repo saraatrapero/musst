@@ -20,9 +20,11 @@ su pareja pierde esa partida.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from collections.abc import Mapping
+from dataclasses import dataclass, field
 from typing import ClassVar
 
+from mus_engine.ai.profiles import PlayerProfile
 from mus_engine.config import GameConfig
 from mus_engine.game.actions import Action, SignalAction
 from mus_engine.game.observations import Observation
@@ -36,6 +38,8 @@ class BotContext:
     seat: SeatId
     config: GameConfig
     seed: int  # para que el bot sea reproducible si usa azar
+    # Perfiles guardados de los demás jugadores (Fase E), si el organizador los tiene.
+    profiles: Mapping[SeatId, PlayerProfile] = field(default_factory=dict)
 
 
 class Bot(ABC):

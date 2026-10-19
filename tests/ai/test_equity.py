@@ -98,8 +98,8 @@ def test_windows_model_strong_and_weak_rivals() -> None:
     hand = cards("12O", "12C", "11E", "5B")
     k = knowledge(hand)
     base = team_equity(k, LanceType.GRANDE, POLICY)
-    strong = team_equity(k, LanceType.GRANDE, POLICY, {SeatId(1): (0.7, 1.0)})
-    weak = team_equity(k, LanceType.GRANDE, POLICY, {SeatId(1): (0.0, 0.3)})
+    strong = team_equity(k, LanceType.GRANDE, POLICY, {SeatId(1): lambda d: d.window(0.7, 1.0)})
+    weak = team_equity(k, LanceType.GRANDE, POLICY, {SeatId(1): lambda d: d.window(0.0, 0.3)})
     assert strong < base < weak
 
 

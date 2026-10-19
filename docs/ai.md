@@ -10,7 +10,8 @@ completo de la partida).
 | CardCountingAgent | D | `ai/counting.py` | ✅ |
 | ScoreAgent | D | `ai/score.py` | ✅ |
 | Bot **medio** | D | `bots/medium_bot.py` | ✅ |
-| PlayerProfileAgent | E | — | pendiente |
+| PlayerProfileAgent | E | `ai/profiles.py` | ✅ (análisis y memoria; ver abajo) |
+| Inferencia por el mus y los pases | E | `ai/inference.py` | ✅ (desactivada en el bot medio) |
 | HandInferenceAgent, EquityAgent completo | F | — | pendiente |
 | SignalAgent | G | — | pendiente |
 | LearningAgent, bot **profesional** | H | — | pendiente |
@@ -114,3 +115,94 @@ cada jugador.
 Durante la fase apareció un fallo del bot sencillo: con dos jugadas de 31 se subían el
 envite sin fin y la partida no terminaba. Ahora no sube cuando lo que hay en juego ya
 basta para ganar (test de regresión `tests/regression/test_bots_finish_games.py`).
+
+## Fase E: perfiles de jugador (`profiles.py`, `inference.py`)
+
+### Qué se mide de cada jugador
+
+`ProfileTracker` lee **sólo eventos públicos** (lo que cada uno hace y las manos que se
+enseñan al final) y cruza cada decisión con la fuerza de la mano con que se tomó, en
+percentil entre las manos que pueden jugar ese lance:
+
+| Tramo | Percentil | Para qué |
+|---|---|---|
+| mala | < 30 % | faroles (envidar con el 30 % peor) |
+| regular | 30–60 % | |
+| buena | 60–80 % | |
+| muy buena | ≥ 80 % | ir de tapado (pasar con el 20 % mejor) |
+
+`PlayerProfile` guarda contadores (sumables entre partidas, JSON) y da, con **priors
+Beta** (un jugador nuevo parte del comportamiento medio):
+
+- frecuencia de envite, órdago, querer, querer órdagos y cortar el mus;
+- envite / órdago / querer **por tramo de fuerza**; farol y tapado;
+- tantos envidados de media por tramo (las «piedras» con buenas y con malas);
+- si envida distinto cuando va perdiendo;
+- con qué manos corta o pide mus (`mus_beta`);
+- etiqueta (`style`): por conocer, imprevisible, farolero, arriesgado, conservador,
+  cauto, de tapado o equilibrado, con un nivel de confianza.
+
+En 30 partidas entre bots: el `sencillo` sale **conservador** (envida el 6 %, nunca
+órdago), el `aleatorio` **imprevisible** (envida igual con malas que con buenas) y un
+bot farolero de prueba, **imprevisible/farolero** (farol del 55 %).
+
+### Memoria y web
+
+Al terminar cada partida, la web suma lo aprendido de cada persona a su perfil
+(tabla `player_profiles`). Al empezar la siguiente, los bots lo reciben en
+`BotContext.profiles`. La persona ve su estilo en el lobby (`GET /api/me/profile`), lo
+descarga con sus datos y se borra con su cuenta.
+
+### Inferencia por el mus y los pases (`inference.py`)
+
+Cortar el mus es una señal fuerte (400 partidas entre bots):
+
+| Señal | P(pares) | P(juego) | percentil medio en grande |
+|---|---|---|---|
+| corta | 73 % | 60 % | 0,70 |
+| pide mus | 41 % | 3,5 % | 0,37 |
+| no habla | 54 % | 28 % | 0,51 |
+
+Cada señal se convierte en una inclinación `exp(β·(percentil − ½))` de las manos
+posibles; el perfil de cada jugador la ajusta con sus propias manos enseñadas. Con ella
+la probabilidad que calcula el bot **se calibra mucho mejor** (aceptando envites,
+predecía 40 % y ganaba 25 %; con la inferencia, 37 % frente a 35 % en grande).
+
+### Qué se probó y qué se decidió
+
+Partidas no usadas para ajustar (400 por fila, margen ±2,5 puntos):
+
+| Bot medio… | contra sencillo | contra farolero |
+|---|---|---|
+| como en la Fase D (sin perfiles ni inferencia) | **65 %** | **56–60 %** |
+| con perfiles de los rivales | 63–66 % | 56 % |
+| con perfiles e inferencia por mus y pases | 61 % | 57–59 % |
+| con perfil del farolero aprendido en 40 partidas | — | 55 % |
+
+Conclusión: los perfiles **describen bien** a cada jugador, pero usarlos para decidir,
+con el modelo de decisión actual (umbrales fijos más una tasa de faroles), no gana más
+partidas que los valores ajustados de la Fase D. La inferencia mejora la calibración pero
+tampoco se traduce en victorias. Por eso el bot medio los deja **desactivados**
+(`MediumBot.use_profiles`, `MediumBot.infer_from_mus_and_passes`): están probados y
+listos para la Fase F, en la que la inferencia pondera cada mano posible por toda la
+secuencia de acciones de cada jugador (§3.3) y el valor esperado se estima simulando
+sus respuestas según su perfil (§3.6).
+
+Lecciones del proceso (para la defensa):
+
+1. Un primer intento con perfiles bajó al 55 %: el modelo bayesiano por tramos era más
+   tosco que los umbrales ajustados. Se cambió por «umbral + fuga», que sin datos
+   reproduce exactamente la Fase D.
+2. Con un perfil correcto del farolero el bot ganaba *menos*: sus probabilidades estaban
+   mal calibradas (ignoraba que quien corta el mus va fuerte). Los valores ajustados a
+   ojo compensaban ese sesgo; al darle datos reales, la compensación desaparecía.
+3. Deducir que «quien pasa va flojo» de forma tajante hundía el rendimiento: con buenas
+   manos también se pasa. La versión suave usa P(pasa | fuerza) del perfil.
+
+### Órdagos prudentes (petición de la usuaria)
+
+El bot medio sólo echa (o devuelve) un órdago si, cuando se lo quieran, calcula al
+menos un 60 % de ganar el lance (`ORDAGO_MIN_WIN`), salvo que la partida esté casi
+perdida (P(ganar) < 15 %, `DESPERATE`), en cuyo caso arriesga como antes. Además de
+hacer las partidas contra personas menos «a una carta», gana más: 68 % contra el
+sencillo (400 partidas) y 85 % contra el aleatorio (200).
