@@ -418,8 +418,23 @@ function lanceBoard(g) {
       else if (b && b.pending > b.accepted) status = `Envite de ${b.pending}`;
       else status = "Hablando…";
     }
-    return h("div", { class: `lance ${cls}` }, h("span", { class: "lname" }, LANCES[lance]), h("span", {}, status));
+    // Piedras en juego (o ya ganadas con un «no quiero») junto a cada lance.
+    let stake = 0, owner = "";
+    if (outcome && outcome.resolution === "rejected") { stake = outcome.immediate_points; owner = outcome.team === mineTeam ? " ours" : " theirs"; }
+    else if (outcome && outcome.resolution === "accepted") stake = outcome.amount;
+    else if (cls === "now" && g.bet && !g.bet.is_ordago) stake = Math.max(g.bet.pending, g.bet.accepted);
+    return h("div", { class: `lance ${cls}` }, h("span", { class: "lname" }, LANCES[lance]),
+      stake > 0 && h("span", { class: `stake${owner}`, title: `${stake} piedra${stake === 1 ? "" : "s"}` }, stonePile(stake)),
+      h("span", {}, status));
   }));
+}
+
+// Amarracos (5 tantos) y piedras (1 tanto) dibujados.
+function stonePile(tantos) {
+  const row = h("span", { class: "stonepile" });
+  for (let i = 0; i < Math.floor(tantos / 5); i++) row.append(h("span", { class: "amarraco" }));
+  for (let i = 0; i < tantos % 5; i++) row.append(h("span", { class: "piedra" }));
+  return row;
 }
 
 // --- Aviso de turno ---------------------------------------------------------------------------
@@ -427,6 +442,12 @@ function turnBanner(g) {
   if (g.phase === "game_over") return null;
   const mine = g.to_act.includes(g.seat);
   const n = (s) => g.names[s];
+  const holders = g.lance === "pares" ? g.pares_holders : g.lance === "juego" ? g.juego_holders : null;
+  if (g.phase === "lance" && holders && !holders[g.seat]) {
+    const playing = [0, 1, 2, 3].filter((s) => holders[s]).map(n).join(", ");
+    return h("div", { class: "banner wait" },
+      `No llevas ${g.lance}, pero la jugada sigue: la juegan ${playing}. Le toca a ${g.to_act.map(n).join(", ")}…`);
+  }
   if (!mine) return h("div", { class: "banner wait" }, `Le toca a ${g.to_act.map(n).join(", ")}…`);
   let text = "Te toca";
   if (g.phase === "mus_decision") text = "Te toca: ¿pides mus (cambiar cartas) o cortas (jugar con estas)?";
@@ -711,9 +732,7 @@ function myHandChips(cards) {
 function scoreStones(tantos, label) {
   const box = h("div", { class: "stones", title: `${tantos} tantos = ${Math.floor(tantos / 5)} amarracos y ${tantos % 5} piedras` });
   if (label) box.append(h("small", {}, label));
-  const row = h("div", { class: "stonepile" });
-  for (let i = 0; i < Math.floor(tantos / 5); i++) row.append(h("span", { class: "amarraco" }));
-  for (let i = 0; i < tantos % 5; i++) row.append(h("span", { class: "piedra" }));
+  const row = stonePile(tantos);
   if (!tantos) row.append(h("span", { class: "muted" }, "sin piedras"));
   box.append(row, h("div", { class: "stonecount" }, `${tantos} tanto${tantos === 1 ? "" : "s"} · ${Math.floor(tantos / 5)} amarr. + ${tantos % 5} p.`));
   return box;
@@ -769,7 +788,7 @@ function tableScreen() {
     } else {
       cards = Array.from({ length: count }, (_, k) => cardEl(null, { small: true, fly: fromDealer(k) }));
     }
-    const deck = s === g.dealer && dealing && h("div", { class: "deck", title: "Baraja" },
+    const deck = s === g.dealer && g.phase !== "game_over" && h("div", { class: "deck", title: "Baraja" },
       h("span", { class: "card mini" }, MusCards.back({ mini: true })), h("small", {}, "Baraja"));
     return h("div", { class: `seat pos${pos}${!dealing && g.to_act.includes(s) ? " turn" : ""}${s % 2 === me % 2 ? " ours" : " theirs"}` },
       state.bubbles[s] && h("div", { class: "bubble" }, state.bubbles[s]),
@@ -777,7 +796,7 @@ function tableScreen() {
         face(occ.avatar, dx, dy, moodFor(g, s)),
         h("div", {}, h("div", { class: "name" }, occ.name, occ.bot ? " 🤖" : ""), h("div", { class: "tags" }, tags.join(" · ")))),
       chips.length > 0 && h("div", { class: "chips" }, chips),
-      h("div", { class: `hand-row${deck ? " with-deck" : ""}` }, deck, h("div", { class: `cards${s === me ? " mine" : ""}` }, cards)),
+      h("div", { class: `hand-row${deck ? " with-deck" : ""}` }, deck, h("div", { class: `cards${s === me ? " mine" : ""}${s !== me && revealed && revealed[s] && revealed[s].length ? " shown" : ""}` }, cards)),
       s === me && !dealing && myHandChips(g.my_hand));
   });
   const mineTeam = me % 2;
