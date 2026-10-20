@@ -153,6 +153,7 @@ def close_bet(state: GameState, bet: BetState) -> Step:
             bet.participants,
             team=bet.proposing_team,
             immediate_points=rejection_points(bet, state.config),
+            raised=bet.raised,
         )
     elif bet.status is BetStatus.ORDAGO_ACCEPTED:
         outcome = LanceOutcome(lance, Resolution.ORDAGO_ACCEPTED, bet.participants)
@@ -171,7 +172,7 @@ def close_bet(state: GameState, bet: BetState) -> Step:
         state = _hand(state, outcomes=(*hand.outcomes, outcome), bet=bet)
         new_state, entered = enter(state, Phase.ORDAGO_SHOWDOWN)
         return new_state, (closed, *entered)
-    if outcome.resolution is Resolution.REJECTED:
+    if outcome.resolution is Resolution.REJECTED and not state.config.negadas_at_end:
         # C.VII-2: la negada o el envite no querido se apunta en el acto.
         engine = ScoringEngine(state.config)
         entry = engine.rejection_entry(outcome, raised=bet.raised)

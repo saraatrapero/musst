@@ -92,9 +92,11 @@ def legal_signals(
     policy: RankingPolicy,
     context: SignalContext,
     already_made: frozenset[Signal],
+    allow_false: bool = False,
 ) -> tuple[Signal, ...]:
-    """Señas que el jugador puede hacer ahora, en orden estable."""
-    allowed = true_signals(cards, policy)
+    """Señas que el jugador puede hacer ahora, en orden estable (con ``allow_false``,
+    también las que no corresponden a su mano)."""
+    allowed = frozenset(Signal) if allow_false else true_signals(cards, policy)
     return tuple(
         s for s in Signal if s in allowed and s not in already_made and timing_allows(s, context)
     )

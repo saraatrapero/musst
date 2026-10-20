@@ -257,7 +257,7 @@ para el motor.
 | D-25 | ¿Un jugador que pasó puede contestar a un envite posterior? | No lo prohíbe; C.VI-3/4 hablan de los rivales | sí, si es rival del que envida (diseño aprobado, A-13) |
 | D-26 | Tras un "no quiero" en punto, ¿quién cobra el punto? | C.VI-7: "ganando el lance sus rivales" en cualquier lance | la pareja que envidó cobra el valor del punto al final, igual que pares y juego (D-17) |
 | D-21 | ¿Puede responderse con órdago a un envite? | C.VI-1, C.VI-21 mencionan "envite, revoque u órdago" en litigio, sin prohibirlo | sí, el órdago es un revoque válido (no se puede revocar un órdago) |
-| D-22 | Fin del juego a mitad de jugada | C.VI-6: envites aceptados al final y por orden de lances; C.VII-2: negadas en cada lance. No dice si se para al llegar al tanteo | el juego termina en el momento en que una pareja alcanza el tanteo (≥ 40), sea por una negada durante los lances o en el recuento final; el recuento se detiene ahí |
+| D-22 | Fin del juego a mitad de jugada | C.VI-6: envites aceptados al final y por orden de lances; C.VII-2: negadas en cada lance. No dice si se para al llegar al tanteo | el juego termina en el momento en que una pareja alcanza el tanteo (≥ 40), sea por una negada durante los lances o en el recuento final; el recuento se detiene ahí (la web usa `negadas_at_end`: todo se cuenta al final, en orden de lances; docs/web.md) |
 | D-23 | Ganar con exactamente 40 o ≥ 40 | No lo define | ≥ `target_score` |
 | D-19 | Amarracos | C.VII-3/7 los usan pero no fijan equivalencia | el marcador se lleva en tantos; amarraco = 5 tantos sólo como vista |
 

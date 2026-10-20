@@ -37,7 +37,7 @@ from mus_engine.players.seating import opponent, partner, team_of
 from mus_engine.rules.juego import JuegoEvaluator
 from mus_engine.rules.lance import LanceType
 from mus_engine.rules.pares import ParesCategory, ParesEvaluator
-from mus_engine.rules.signals import Signal
+from mus_engine.rules.signals import Signal, true_signals
 
 _COUNT_STRENGTH = {0: 0.1, 1: 0.4, 2: 0.7, 3: 0.9, 4: 1.0}
 _PARES_STRENGTH = {
@@ -167,8 +167,11 @@ class SimpleBot(Bot):
         rivals_watching = any(gaze[p] == me for p in range(4) if p not in (me, mate))
         if gaze[mate] != me or rivals_watching:
             return None
+        honest = true_signals(observation.my_hand, self._policy)  # el bot no hace faroles
         available = {
-            a.signal: a for a in observation.legal_actions.actions if isinstance(a, SignalAction)
+            a.signal: a
+            for a in observation.legal_actions.actions
+            if isinstance(a, SignalAction) and a.signal in honest
         }
         for signal in _SIGNAL_PRIORITY:
             if signal in available:

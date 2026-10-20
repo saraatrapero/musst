@@ -124,7 +124,8 @@ def _check_signals(state: GameState) -> None:
     policy = RankingPolicy.from_config(state.config)
     seen: set[tuple[int, object]] = set()
     for record in hand.signals:
-        if record.signal not in true_signals(hand.hand_of(record.sender), policy):
+        honest = true_signals(hand.hand_of(record.sender), policy)
+        if not state.config.false_signals and record.signal not in honest:
             raise InvariantViolationError(f"Seña falsa registrada: {record}")
         if (record.sender, record.signal) in seen:
             raise InvariantViolationError(f"Seña repetida en la jugada: {record}")

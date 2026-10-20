@@ -245,3 +245,30 @@ def test_signal_invariants(change: str, message: str) -> None:
         state = state.evolve(hand=dataclasses.replace(hand, signals=(own,)))
     with pytest.raises(InvariantViolationError, match=message):
         invariants.check_state(state)
+
+
+def test_false_signals_when_allowed() -> None:
+    """Regla de casa (``false_signals``): se puede señar lo que no se tiene (farol)."""
+    strict = lance_game()
+    assert SignalAction(S.MEDIAS_REYES) not in strict.get_legal_actions(2).actions
+    with pytest.raises(IllegalActionError, match="no corresponde"):
+        strict.apply_action(2, SignalAction(S.MEDIAS_REYES))
+    loose = game_at_lance(HANDS, signals_enabled=True, false_signals=True)
+    assert SignalAction(S.MEDIAS_REYES) in loose.get_legal_actions(2).actions
+    loose.apply_action(2, SignalAction(S.MEDIAS_REYES))  # 7 7 6 5: farol, sin error
+    assert loose.get_state().current_hand.signals[0].signal is S.MEDIAS_REYES
+
+
+def test_simple_bot_never_bluffs_with_signals() -> None:
+    from mus_engine.bots.base import BotContext
+    from mus_engine.bots.simple_bot import SimpleBot
+    from mus_engine.rules.signals import true_signals
+
+    game = game_at_lance(HANDS, signals_enabled=True, false_signals=True)
+    game = with_gaze(game, 2, 0, 0, 0)  # el 0 (compañero) mira al 2; los rivales, no
+    bot = SimpleBot()
+    bot.on_game_start(BotContext(SeatId(2), game.get_state().config, 1))
+    obs = game.get_observation(2)
+    action = bot.signal(obs)
+    assert action is not None
+    assert action.signal in true_signals(obs.my_hand, bot._policy)
