@@ -52,6 +52,7 @@ class LanceOutcome:
     amount: int = 0  # envite querido (ACCEPTED)
     team: TeamId | None = None  # pareja que gana el lance sin comparar (REJECTED, UNCONTESTED)
     immediate_points: int = 0  # negada o deje anotados en el acto (REJECTED)
+    raised: bool = False  # lo no querido era un revoque, no la primera apuesta (REJECTED)
 
 
 class ScoreReason(Enum):
@@ -126,6 +127,8 @@ class ScoringEngine:
             raise InvariantViolationError(f"Lance sin ganador: {outcome}")
 
         entries: list[ScoreEntry] = []
+        if resolution is Resolution.REJECTED and self.config.negadas_at_end:
+            entries.append(self.rejection_entry(outcome, raised=outcome.raised))
         if resolution is Resolution.ACCEPTED:
             entries.append(ScoreEntry(team, outcome.amount, lance, ScoreReason.ENVITE, winner))
         if lance in (LanceType.GRANDE, LanceType.CHICA):

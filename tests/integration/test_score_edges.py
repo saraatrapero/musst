@@ -4,7 +4,8 @@ import pytest
 from tests.factories import game_at_lance
 from tests.play import act, pass_lance, points_events
 
-from mus_engine import AcceptAction, BetAction, GameScore, Phase, RejectAction
+from mus_engine import AcceptAction, BetAction, GameScore, Phase, RaiseAction, RejectAction
+from mus_engine.events import HandsRevealed
 from mus_engine.players import TeamId
 
 # Todos pasan: grande A+1, chica B+1, pares A+3, juego A+3.
@@ -102,3 +103,30 @@ def test_last_game_of_the_match() -> None:
     assert game.is_finished
     assert game.winner is TeamId.A
     assert game.get_state().score == GameScore((40, 20), (3, 1))
+
+
+@pytest.mark.parametrize(
+    ("tantos", "winner", "final"), [((0, 0), None, (7, 1)), ((39, 39), TeamId.A, (40, 39))]
+)
+def test_negadas_counted_at_the_end_in_lance_order(tantos, winner, final) -> None:  # type: ignore[no-untyped-def]
+    """Regla de casa (``negadas_at_end``): la negada no se suma en el acto, sino en el
+    recuento final en su sitio (grande antes que chica, pares y juego)."""
+    game = game_at_lance(HANDS, tantos=tantos, negadas_at_end=True)
+    act(game, BetAction(2), RejectAction(), RejectAction())  # A envida a grande; no quieren
+    assert game.get_state().score.tantos == tantos  # todavía no se apunta
+    assert game.winner is None
+    while game.phase is Phase.LANCE and game.get_state().current_hand.number == 1:
+        pass_lance(game)
+    assert game.winner is winner
+    assert game.get_state().score.tantos == final
+    assert points_events(game)[0].lance == "grande"
+    assert any(isinstance(e.event, HandsRevealed) for e in game.event_log)  # se ven las cartas
+
+
+def test_negada_raise_counted_at_the_end() -> None:
+    game = game_at_lance(HANDS, negadas_at_end=True)
+    act(game, BetAction(2), RaiseAction(2), RejectAction(), RejectAction())  # 1 sube; A no quiere
+    while game.phase is Phase.LANCE and game.get_state().current_hand.number == 1:
+        pass_lance(game)
+    first = points_events(game)[0]
+    assert (first.team, first.lance, first.reason) == ("B", "grande", "envite_no_querido")

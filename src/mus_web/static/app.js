@@ -504,7 +504,8 @@ function handSummary(g, room) {
   const mineTeam = g.seat % 2 ? "B" : "A";
   const who = (t) => (t === mineTeam ? "Nosotros" : "Ellos");
   const last = points[points.length - 1].data.tantos_after;
-  const lances = [...new Set(points.map((e) => e.data.lance))];
+  // Siempre en el orden del recuento: grande, chica, pares, juego (o punto).
+  const lances = ["grande", "chica", "pares", "juego", "punto"].filter((l) => points.some((e) => e.data.lance === l));
   const steps = [...lances, "resumen"];
   if (!state.summaryTab || !steps.includes(state.summaryTab)) state.summaryTab = steps[0];
   const tab = state.summaryTab, idx = steps.indexOf(tab);
@@ -531,7 +532,13 @@ function handSummary(g, room) {
       const w = resolved.data.winner;
       headline = `Gana ${g.names[w]} (${who(team).toLowerCase()}) porque ${LANCE_WHY[tab]}: ${WHAT_COUNTS[tab](infoParts(hands[w]))}.`;
     } else {
-      headline = `Se lo lleva ${who(team).toLowerCase()} sin enseñar cartas.`;
+      const closed = evs.find((e) => e.type === "LanceClosed" && e.data.lance === tab);
+      const lance = LANCES[tab].toLowerCase();
+      if (closed && closed.data.resolution === "rejected") {
+        headline = `Se lo lleva ${who(team).toLowerCase()} porque envidaron y la otra pareja dijo «no quiero»: cuando no se quiere, no hace falta comparar las cartas.`;
+      } else {
+        headline = `Se lo lleva ${who(team).toLowerCase()} sin envites: solo esa pareja llevaba ${lance}, así que no había con quién comparar.`;
+      }
     }
     body = h("div", {},
       h("div", { class: `winner ${team === mineTeam ? "good" : "bad"}` },
@@ -704,6 +711,7 @@ function signalsPanel(g) {
       h("span", {}, mateLooks ? `¡${g.names[mate]} te está mirando! Es el momento.` : `${g.names[mate]} no te mira ahora: espera a que te mire.`),
       rivalsLook.length > 0 && h("span", { class: "warn" }, `👀 Cuidado: te mira ${rivalsLook.join(" y ")}`)));
   if (!legal.length) box.append(h("div", { class: "muted" }, "Ahora no puedes hacer señas (se hacen después de cortar el mus)."));
+  else box.append(h("div", { class: "muted" }, "Puedes señar cualquier jugada, aunque no la tengas: un farol engaña a los rivales que te miren (ojo, tu compañero también se lo creerá)."));
   const row = h("div", { class: "sig-buttons" });
   for (const a of legal) row.append(h("button", { class: "small sig", onclick: () => send(a) }, h("b", {}, SIGNALS[a.signal] || a.signal), h("small", {}, SIGNAL_HELP[a.signal] || "")));
   box.append(row);

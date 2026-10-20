@@ -46,7 +46,8 @@ def signal_actions(state: GameState, player: SeatId) -> tuple[SignalAction, ...]
     policy = RankingPolicy.from_config(state.config)
     cards = state.current_hand.hand_of(player)
     made = frozenset(r.signal for r in state.current_hand.signals if r.sender == player)
-    return tuple(SignalAction(s) for s in legal_signals(cards, policy, _context(state), made))
+    allowed = legal_signals(cards, policy, _context(state), made, state.config.false_signals)
+    return tuple(SignalAction(s) for s in allowed)
 
 
 def explain_illegal_signal(
@@ -60,7 +61,8 @@ def explain_illegal_signal(
     if signal in _made_by(state, player):
         return IllegalActionError(f"Ya has hecho la seña {signal.value} en esta jugada")
     policy = RankingPolicy.from_config(state.config)
-    if signal not in true_signals(state.current_hand.hand_of(player), policy):
+    honest = true_signals(state.current_hand.hand_of(player), policy)
+    if not state.config.false_signals and signal not in honest:
         return IllegalActionError(
             f"La seña {signal.value} no corresponde a tu jugada: sólo se señan jugadas que "
             "se tienen y completas (C.VIII-4, C.VIII-6)"

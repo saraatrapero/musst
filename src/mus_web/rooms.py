@@ -160,7 +160,9 @@ class Room:
         taken = {o.avatar.id for o in self.seats if o is not None}
         free = [a for a in self.avatars if a.id not in taken] or list(self.avatars)
         self.rng.shuffle(free)
-        config = GameConfig(signals_enabled=self.signals)
+        # Reglas de casa pedidas por la usuaria: se puede farolear con las señas y todo
+        # se cuenta al final de la jugada en orden de lances (docs/web.md).
+        config = GameConfig(signals_enabled=self.signals, false_signals=True, negadas_at_end=True)
         bot_factory = bot_factory or BOT_LEVELS[self.level]
         known = {
             SeatId(s): (profiles or {})[o.user_id]

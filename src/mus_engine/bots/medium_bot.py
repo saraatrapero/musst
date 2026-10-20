@@ -62,10 +62,14 @@ PROPOSER_ACCEPTS_ORDAGO = 0.5
 RIVAL_JUGADA = {LanceType.PARES: 2, LanceType.JUEGO: 2}  # valor medio de su jugada
 BIG_BET_EQUITY = 0.8  # con más de esto, se envida más fuerte
 BIG_BET_EXTRA = 2
-# Órdago sólo si, cuando se lo quieran, cree que gana el lance (o si va a perder la
-# partida de todos modos y no le queda otra que arriesgar).
-ORDAGO_MIN_WIN = 0.6
-DESPERATE = 0.15  # P(ganar la partida) por debajo de la cual arriesga sin más
+# Órdago sólo cuando la partida ya está avanzada y cree que, si se lo quieren, gana el
+# lance; al principio, nunca (con una mano segura se envida para cobrar más). Si va a
+# perder la partida de todos modos, arriesga, pero no con cualquier cosa. Medido: el
+# bot gana lo mismo (74 % contra el sencillo) y echa unas 6 veces menos órdagos.
+ORDAGO_MIN_WIN = 0.9
+ORDAGO_LATE = 30  # tantos de la pareja que más lleva a partir de los que es «tarde»
+DESPERATE = 0.15  # P(ganar la partida) por debajo de la cual arriesga más
+DESPERATE_MIN_WIN = 0.5  # ... pero sólo si tiene opciones de ganar el lance
 
 # Mus: ventaja esperada en tantos para cortar, y peso de cada lance.
 CUT_EDGE = 0.5
@@ -344,8 +348,11 @@ class _Values:
 
     def ordago_is_sound(self, win: float) -> bool:
         """Sólo se echa si cree que lo gana, salvo que la partida esté casi perdida."""
-        desperate = self.score.win(self.mine, self.theirs) < DESPERATE
-        return win >= ORDAGO_MIN_WIN or desperate
+        if max(self.mine, self.theirs) < ORDAGO_LATE:
+            return False
+        if win >= ORDAGO_MIN_WIN:
+            return True
+        return win >= DESPERATE_MIN_WIN and self.score.win(self.mine, self.theirs) < DESPERATE
 
     def ordago(self) -> float:
         fold, p = self._team_response(ordago=True)

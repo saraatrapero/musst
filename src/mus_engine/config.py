@@ -54,6 +54,11 @@ class GameConfig:
     # Negada (Voc. "Negada") y deje (C.VII-1, Voc. "Deje"; D-16).
     points_negada: int = 1
     points_deje: int = 1
+    # Cuándo se suman al marcador las negadas y los envites no queridos. El reglamento
+    # los apunta en el acto (C.VII-2) y el juego puede acabar a mitad de jugada (D-22).
+    # Con ``True`` se suman en el recuento final, en orden de lances (grande, chica,
+    # pares, juego): gana la primera pareja que llega al tanteo en ese orden.
+    negadas_at_end: bool = False
 
     # Sorteo del primer reparto (C.III-1, C.III-3; D-03). Asientos 0..3.
     # ``first_dealer`` fija el primer repartidor y omite el sorteo (útil en tests).
@@ -63,6 +68,9 @@ class GameConfig:
     # Señas y miradas (C.VIII; IA-1, IA-2). Desactivadas: el juego es el del reglamento
     # sin comunicación entre compañeros.
     signals_enabled: bool = False
+    # El reglamento sólo admite señar lo que se tiene (C.VIII-4); con ``True`` se pueden
+    # hacer señas falsas (farol) para engañar a quien mire.
+    false_signals: bool = False
     gaze_partner_weight: int = 30  # pesos relativos de hacia dónde mira cada jugador
     gaze_rival_weight: int = 15  # (a cada rival)
     gaze_table_weight: int = 40
