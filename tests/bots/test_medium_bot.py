@@ -45,11 +45,22 @@ def test_ordago_response_depends_on_the_score(tantos: tuple[int, int], expected:
     assert medio(2).decide(game.get_observation(2)) == expected
 
 
+TWO_KINGS = ("12O 12C 7E 5B", *ONE_KING[1:])
+
+
 def test_more_aggressive_when_losing() -> None:
-    losing = game_at_lance(ONE_KING, tantos=(20, 37))
-    winning = game_at_lance(ONE_KING, tantos=(37, 20))
+    losing = game_at_lance(TWO_KINGS, tantos=(20, 37))
+    winning = game_at_lance(TWO_KINGS, tantos=(37, 20))
     assert medio(0).decide(losing.get_observation(0)) == OrdagoAction()
-    assert medio(0).decide(winning.get_observation(0)) == BetAction(2)
+    assert medio(0).decide(winning.get_observation(0)) == BetAction(4)
+
+
+def test_no_senseless_ordagos() -> None:
+    """Ni con un solo rey aunque vaya perdiendo, ni al principio de la partida."""
+    losing = game_at_lance(ONE_KING, tantos=(20, 37))
+    early = game_at_lance(("12O 12C 3E 3B", *ONE_KING[1:]), tantos=(0, 0))  # 4 reyes
+    assert medio(0).decide(losing.get_observation(0)) == BetAction(2)
+    assert medio(0).decide(early.get_observation(0)) == BetAction(4)
 
 
 def test_bets_bigger_with_a_great_hand() -> None:

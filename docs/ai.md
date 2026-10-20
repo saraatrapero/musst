@@ -206,3 +206,15 @@ menos un 60 % de ganar el lance (`ORDAGO_MIN_WIN`), salvo que la partida esté c
 perdida (P(ganar) < 15 %, `DESPERATE`), en cuyo caso arriesga como antes. Además de
 hacer las partidas contra personas menos «a una carta», gana más: 68 % contra el
 sencillo (400 partidas) y 85 % contra el aleatorio (200).
+
+Después, jugando en la web, los bots seguían echando demasiados órdagos (entre bots
+medios, uno por jugada; uno de cada cinco «desesperado» con cualquier mano). Ahora:
+
+- Nunca hay órdago hasta que alguna pareja llega a 30 tantos (`ORDAGO_LATE`): al
+  principio, con una mano segura se envida para cobrar más.
+- Después, sólo con un 90 % de ganar el lance si se lo quieren (`ORDAGO_MIN_WIN`).
+- Desesperado (P(ganar la partida) < 15 %), sólo con al menos un 50 % de ganar el lance
+  (`DESPERATE_MIN_WIN`), no con cualquier cosa.
+
+Resultado: de 140 órdagos en 140 jugadas a 15 en 152 (partidas entre bots medios), y
+el bot gana lo mismo: 71 % contra el sencillo (300 partidas).
