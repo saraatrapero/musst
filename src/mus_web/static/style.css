@@ -277,3 +277,23 @@ button.sig small { color: #d9c7aa; font-size: .7rem; }
 .seat.pos1 .cards .card.mini, .seat.pos3 .cards .card.mini { margin-left: -26px; }
 .seat.pos1 .cards .card.mini:first-child, .seat.pos3 .cards .card.mini:first-child { margin-left: 0; }
 .deck small { margin-top: 8px; }
+/* Piedras en juego en cada lance */
+.lance { align-items: center; gap: 8px; }
+.lance .stake { margin-left: auto; display: inline-flex; padding: 2px 6px; border-radius: 999px; background: rgba(0,0,0,.28); }
+.lance .stake.ours { box-shadow: inset 0 0 0 2px #5fd38a; } .lance .stake.theirs { box-shadow: inset 0 0 0 2px #ff6b81; }
+.lance .stake .stonepile { min-height: 0; gap: 3px; }
+.lance .stake .amarraco { width: 16px; height: 16px; } .lance .stake .piedra { width: 10px; height: 10px; }
+/* La baraja se queda junto a quien reparte toda la jugada */
+.hand-row.with-deck .deck .card.mini { width: 30px; height: 44px; }
+/* Cartas de los bots enseñadas al final: separadas y algo más grandes */
+.seat.seat .cards.shown { gap: 4px; flex-wrap: wrap; max-width: 210px; margin-left: auto; margin-right: auto; }
+.seat.seat .cards.shown .card.mini { margin-left: 0; width: 44px; height: 64px; }
+/* Amarracos más grandes en el marcador */
+.teambox .amarraco { width: 26px; height: 26px; } .teambox .piedra { width: 14px; height: 14px; }
+/* Resumen: naipes más grandes y separados */
+.fourhands .cards { gap: 8px; }
+.fourhands .card.mini { width: 48px; height: 70px; }
+@media (max-width: 700px) {
+  .seat.seat .cards.shown { gap: 3px; flex-wrap: nowrap; }
+  .seat.seat .cards.shown .card.mini { width: 36px; height: 54px; }
+}
