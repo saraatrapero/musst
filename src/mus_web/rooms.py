@@ -88,6 +88,11 @@ class Room:
     phrases: list[dict[str, Any]] = field(default_factory=list)
     saved: bool = False
     level: str = DEFAULT_LEVEL
+    target: int = 40  # tantos para ganar (40 u 30)
+    # Avatares elegidos para los bots (compañero y rivales); si no, al azar.
+    partner: str | None = None
+    rivals: tuple[str, str] | None = None
+    tournament_round: int = 0  # 1-3 en un torneo; 0 en partida suelta
     # Cada jugada se reparte cuando una persona pulsa «Repartir» (así ve el reparto y
     # tiene tiempo de leer la puntuación de la anterior). Los bots esperan.
     wait_for_deal: bool = True
@@ -160,9 +165,15 @@ class Room:
         taken = {o.avatar.id for o in self.seats if o is not None}
         free = [a for a in self.avatars if a.id not in taken] or list(self.avatars)
         self.rng.shuffle(free)
+        chosen = self._chosen_avatars(taken)
         # Reglas de casa pedidas por la usuaria: se puede farolear con las señas y todo
         # se cuenta al final de la jugada en orden de lances (docs/web.md).
-        config = GameConfig(signals_enabled=self.signals, false_signals=True, negadas_at_end=True)
+        config = GameConfig(
+            target_score=self.target,
+            signals_enabled=self.signals,
+            false_signals=True,
+            negadas_at_end=True,
+        )
         bot_factory = bot_factory or BOT_LEVELS[self.level]
         known = {
             SeatId(s): (profiles or {})[o.user_id]
@@ -172,7 +183,11 @@ class Room:
         speakers: dict[SeatId, Avatar] = {}
         for seat in ALL_SEATS:
             if self.seats[seat] is None:
-                avatar = free.pop() if free else self.rng.choice(self.avatars)
+                if seat in chosen:
+                    avatar = chosen[seat]
+                    free = [a for a in free if a.id != avatar.id]
+                else:
+                    avatar = free.pop() if free else self.rng.choice(self.avatars)
                 bot = bot_factory()
                 bot.on_game_start(BotContext(seat, config, seed + seat, known))
                 self.seats[seat] = Occupant(avatar.nickname, avatar, bot=bot)
@@ -182,6 +197,20 @@ class Room:
         self.game.start()
         self._phrase_maker = PhraseMaker(speakers, self.rng)
         self._after_step()
+
+    def _chosen_avatars(self, taken: set[str]) -> dict[SeatId, Avatar]:
+        """Compañero y rivales elegidos (sólo con un humano: asientos 2, 1 y 3)."""
+        if self.human_seats != (SeatId(0),):
+            return {}
+        by_id = {a.id: a for a in self.avatars}
+        wanted = {SeatId(2): self.partner}
+        if self.rivals is not None:
+            wanted |= {SeatId(1): self.rivals[0], SeatId(3): self.rivals[1]}
+        return {
+            seat: by_id[avatar_id]
+            for seat, avatar_id in wanted.items()
+            if avatar_id in by_id and avatar_id not in taken
+        }
 
     # --- Durante la partida -------------------------------------------------------------
 
@@ -292,6 +321,8 @@ class Room:
             "signals": self.signals,
             "phrases": self.phrases_enabled,
             "level": self.level,
+            "target": self.target,
+            "tournament_round": self.tournament_round,
             "host_id": self.host_id,
             "started": self.started,
             "finished": self.finished,

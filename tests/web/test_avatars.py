@@ -31,8 +31,16 @@ def test_pack_has_the_eight_characters() -> None:
             "nickname": avatar.nickname,
             "style": avatar.style,
             "color": avatar.color,
+            "sample": avatar.phrases["gana_partida"][0],
         }
     assert set(avatars_by_id()) == {a.id for a in avatars}
+
+
+def test_sample_phrase_falls_back() -> None:
+    from mus_web.avatars_pack import Avatar
+
+    assert Avatar("a", "Uno", "s", "#000", {"pasa": ("Paso.",)}).sample == "Paso."
+    assert Avatar("a", "Uno", "s", "#000", {}).sample == "Soy Uno."
 
 
 def _valid() -> dict[str, Any]:

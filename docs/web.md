@@ -170,3 +170,16 @@ que pidió la usuaria (el motor, por defecto, sigue el reglamento):
   acto, sino en el recuento final en orden de lances (grande, chica, pares, juego).
   Gana la primera pareja que llega al tanteo en ese orden y siempre se ven las cartas
   al acabar la jugada.
+
+## Torneo, compañero y meta (ideas de PC Mus)
+
+- **Torneo (3 rondas)**: cuartos (bots sencillos), semifinal y gran final (bots
+  medios) contra tres parejas distintas. Si se pierde una ronda, el torneo acaba.
+  El progreso se guarda en el navegador (`localStorage`, clave `torneo`); cada
+  partida es una sala normal con `tournament_round` 1-3 y los rivales elegidos.
+- **Elegir compañero** (y, en el torneo, los rivales): `partner` y `rivals` al crear
+  la sala, sólo en el modo con un humano. Cada personaje tiene una frase de muestra
+  (`sample`) para escuchar su voz.
+- **Meta del juego**: a 40 o a 30 tantos (`target`).
+- En la mesa, «Faltan N» en el marcador y el botón «🤫 Echar seña» (se abre solo
+  cuando tu compañero te mira).

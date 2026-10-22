@@ -208,6 +208,46 @@ def test_room_errors(client: TestClient) -> None:
     assert client.post("/api/rooms", json={"mode": "cinco"}).status_code == 422
     assert client.post("/api/rooms", json={"mode": "con_bot", "level": "dios"}).status_code == 422
     assert client.get("/api/rooms/NOEXISTE").status_code == 404
+    bad: list[dict[str, Any]] = [
+        {"target": 50},
+        {"tournament_round": 4},
+        {"partner": "nadie"},
+        {"rivals": ["tentador"]},
+        {"partner": "tentador", "rivals": ["tentador", "tronista"]},
+    ]
+    for extra in bad:
+        assert client.post("/api/rooms", json={"mode": "con_bot", **extra}).status_code == 422
+
+
+def test_choose_partner_rivals_and_target(client: TestClient) -> None:
+    register(client)  # avatar marquesa
+    body = {
+        "mode": "con_bot",
+        "target": 30,
+        "partner": "tronista",
+        "rivals": ["tentador", "abuela"],
+        "tournament_round": 2,
+    }
+    room = client.post("/api/rooms", json=body).json()
+    assert (room["target"], room["tournament_round"]) == (30, 2)
+    started = client.post(f"/api/rooms/{room['code']}/start").json()
+    assert [s["avatar"]["id"] for s in started["seats"]] == [
+        "marquesa",
+        "tentador",
+        "tronista",
+        "abuela",
+    ]
+    hub: Hub = client.app.state.hub  # type: ignore[attr-defined]
+    game = hub.rooms[room["code"]].game
+    assert game is not None
+    assert game.get_state().config.target_score == 30
+
+
+def test_chosen_avatars_only_with_one_person(client: TestClient) -> None:
+    register(client)
+    room = client.post("/api/rooms", json={"mode": "dos_humanos", "partner": "tronista"}).json()
+    hub: Hub = client.app.state.hub  # type: ignore[attr-defined]
+    assert hub.rooms[room["code"]]._chosen_avatars(set()) == {}
 
 
 def test_too_many_rooms(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
