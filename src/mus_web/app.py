@@ -69,7 +69,7 @@ class Settings:
     database_url: str = DEFAULT_DATABASE_URL
     secure_cookies: bool = False
     session_days: int = 30
-    bot_delay: float = 0.9  # segundos que «piensa» un bot (para poder seguir la mesa)
+    bot_delay: float = 1.3  # segundos que «piensa» un bot (para seguir la mesa y oír lo que canta)
     hand_pause: float = 3.0  # pausa al acabar una mano para ver las cartas enseñadas
     tick_interval: float = 1.5  # un momento del reloj de miradas, con señas
     password_n: int = 2**14  # coste de scrypt (se reduce en los tests)
@@ -117,6 +117,10 @@ class RoomIn(BaseModel):
     signals: bool = False
     phrases: bool = True
     level: str = DEFAULT_LEVEL
+    target: int = 40
+    partner: str | None = None
+    rivals: list[str] | None = None
+    tournament_round: int = 0
 
 
 # --- Salas en memoria --------------------------------------------------------------------
@@ -545,10 +549,26 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             raise HTTPException(422, "Modo de juego desconocido") from error
         if body.level not in BOT_LEVELS:
             raise HTTPException(422, "Nivel de bots desconocido")
+        if body.target not in (30, 40):
+            raise HTTPException(422, "Se juega a 30 o a 40 tantos")
+        if not 0 <= body.tournament_round <= 3:
+            raise HTTPException(422, "Ronda de torneo no válida")
+        known = avatars_by_id()
+        picked = [body.partner] if body.partner is not None else []
+        if body.rivals is not None:
+            if len(body.rivals) != 2:
+                raise HTTPException(422, "Elige dos rivales")
+            picked += body.rivals
+        if any(a not in known for a in picked) or len(set(picked)) != len(picked):
+            raise HTTPException(422, "Personajes no válidos")
         try:
             room = hub.create(user, mode, body.signals, body.phrases, body.level)
         except RoomError as error:
             raise HTTPException(503, str(error)) from error
+        room.target = body.target
+        room.partner = body.partner
+        room.rivals = None if body.rivals is None else (body.rivals[0], body.rivals[1])
+        room.tournament_round = body.tournament_round
         return room.lobby_view()
 
     @app.get("/api/rooms/{code}")

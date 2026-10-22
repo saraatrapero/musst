@@ -48,7 +48,21 @@ class Avatar:
     phrases: dict[str, tuple[str, ...]]
 
     def public(self) -> dict[str, object]:
-        return {"id": self.id, "nickname": self.nickname, "style": self.style, "color": self.color}
+        return {
+            "id": self.id,
+            "nickname": self.nickname,
+            "style": self.style,
+            "color": self.color,
+            "sample": self.sample,
+        }
+
+    @property
+    def sample(self) -> str:
+        """Una frase suya para «escuchar su voz» al elegirlo."""
+        for moment in ("gana_partida", "envida", *sorted(self.phrases)):
+            if moment in self.phrases:
+                return self.phrases[moment][0]
+        return f"Soy {self.nickname}."
 
 
 def parse_pack(data: object) -> tuple[str, tuple[Avatar, ...]]:

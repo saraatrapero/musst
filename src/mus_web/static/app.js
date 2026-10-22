@@ -5,7 +5,7 @@
 const state = {
   me: null, avatars: [], notice: "", room: null, view: null, ws: null, selected: new Set(), bubbles: {},
   lastPhrase: 0, quiet: false, summarySeen: 0, phraseLog: [], deckImages: [],
-  dealing: null, dealtShown: 0, voice: readPref("voz", true), signalsOpen: false,
+  dealing: null, dealtShown: 0, voice: readPref("voz", true), signalsOpen: false, lastCall: null,
 };
 
 function readPref(key, fallback) {
@@ -25,6 +25,42 @@ function speak(text, avatarId) {
   u.rate = 0.95 + ((i * 13) % 20) / 100;
   speechSynthesis.speak(u);
 }
+// Cada jugador «canta» en voz alta lo que hace (mus, paso, envido, quiero…), como en la
+// mesa de verdad. Sólo lo nuevo: al entrar en la sala no se repite lo ya hablado.
+const DISCARD_WORDS = { 1: "Dame una", 2: "Dame dos", 3: "Dame tres", 4: "Dame cuatro" };
+function callFor(e) {
+  const d = e.data;
+  switch (e.type) {
+    case "MusRequested": return [[d.seat, "Mus"]];
+    case "MusCut": return [[d.seat, "No hay mus"]];
+    case "DiscardDeclared": return [[d.seat, DISCARD_WORDS[d.count] || `Dame ${d.count}`]];
+    case "Passed": return [[d.seat, "Paso"]];
+    case "BetPlaced": return [[d.seat, d.amount === 2 ? "Envido" : `Envido ${d.amount}`]];
+    case "BetRaised": return [[d.seat, `${d.increment} más`]];
+    case "OrdagoDeclared": return [[d.seat, "¡Órdago!"]];
+    case "BetAccepted": case "OrdagoAccepted": return [[d.seat, "Quiero"]];
+    case "BetRejected": return [[d.seat, "No quiero"]];
+    case "ParesDeclared": return d.holders.map((x, i) => [i, x ? "Pares sí" : "Pares no"]);
+    case "JuegoDeclared": return d.holders.map((x, i) => [i, x ? "Juego sí" : "Juego no"]);
+    default: return [];
+  }
+}
+function singCalls(data) {
+  const events = (data.game && data.game.events) || [];
+  const last = events.length ? events[events.length - 1].seq : 0;
+  if (state.lastCall == null || last < state.lastCall) { state.lastCall = last; return; }
+  const fresh = events.filter((e) => e.seq > state.lastCall);
+  state.lastCall = last;
+  if (state.quiet || state.dealtShown < data.game.hand_number - 1) return;
+  const mano = data.game.mano ?? 0;
+  for (const e of fresh) {
+    let calls = callFor(e);
+    // Pares y juego se cantan en orden, empezando por la mano.
+    if (e.type === "ParesDeclared" || e.type === "JuegoDeclared") calls = [0, 1, 2, 3].map((k) => calls[(mano + k) % 4]);
+    for (const [seat, text] of calls) speak(text, data.room.seats[seat] && data.room.seats[seat].avatar.id);
+  }
+}
+
 // iPhone/iPad sólo dejan hablar después de un toque: se «despierta» la voz con el primero.
 function unlockVoice() {
   if ("speechSynthesis" in window) { const u = new SpeechSynthesisUtterance(" "); u.volume = 0; speechSynthesis.speak(u); }
@@ -149,6 +185,110 @@ function renderWho() {
 
 // --- Pantallas: lobby ----------------------------------------------------------------------
 
+// Botones de opción (uno elegido de varios).
+function segmented(options, value, onPick) {
+  const box = h("div", { class: "seg" });
+  for (const [v, label] of options) {
+    const b = h("button", { type: "button", class: v === value ? "on" : "" }, label);
+    b.addEventListener("click", () => { for (const x of box.children) x.classList.toggle("on", x === b); onPick(v); });
+    box.append(b);
+  }
+  return box;
+}
+
+// Elegir compañero, con su ficha y su voz.
+function partnerPicker(list, selectedId, onPick) {
+  const card = h("div", { class: "pcard" });
+  const show = (a) => card.replaceChildren(face(a),
+    h("div", {}, h("b", {}, a.nickname), h("div", { class: "muted" }, `Estilo: ${a.style}`), h("i", {}, `«${a.sample}»`),
+      h("div", {}, h("button", { type: "button", class: "secondary small", onclick: () => { unlockVoice(); speak(a.sample, a.id); } }, `🔊 Escuchar a ${a.nickname}`))));
+  const grid = h("div", { class: "avatars" });
+  for (const a of list) {
+    const btn = h("button", { type: "button", class: "avatar-choice" + (a.id === selectedId ? " selected" : "") }, face(a), a.nickname, h("small", {}, a.style));
+    btn.addEventListener("click", () => { for (const b of grid.children) b.classList.toggle("selected", b === btn); onPick(a.id); show(a); });
+    grid.append(btn);
+  }
+  const first = list.find((a) => a.id === selectedId);
+  if (first) show(first);
+  return h("div", {}, grid, card);
+}
+
+// --- Torneo: tres rondas contra parejas de bots (el progreso se guarda en este navegador) ---
+const ROUNDS = [
+  { name: "Cuartos de final", level: "sencillo" },
+  { name: "Semifinal", level: "medio" },
+  { name: "Gran final", level: "medio" },
+];
+
+function newTorneo(partner, target, signals, phrases) {
+  const pool = state.avatars.filter((a) => a.id !== state.me.avatar && a.id !== partner).map((a) => a.id);
+  for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+  const rivals = [0, 1, 2].map((r) => [pool[(2 * r) % pool.length], pool[(2 * r + 1) % pool.length]]);
+  return { partner, target, signals, phrases, rivals, round: 1, results: [] };
+}
+
+function loadTorneo() {
+  try { return JSON.parse(localStorage.getItem("torneo") || "null"); } catch (e) { return null; }
+}
+function saveTorneo(t) {
+  try { if (t) localStorage.setItem("torneo", JSON.stringify(t)); else localStorage.removeItem("torneo"); } catch (e) { /* sin almacenamiento */ }
+
+}
+
+function torneoBanner() {
+  const t = loadTorneo();
+  if (!t || t.results.length >= 3 || t.results.includes(false)) return null;
+  return h("div", { class: "tbanner" }, `🏆 Tienes un torneo en curso: ${ROUNDS[t.round - 1].name}. `,
+    h("button", { class: "small", onclick: tournamentScreen }, "Continuar"));
+}
+
+function tournamentScreen() {
+  closeSocket();
+  document.body.classList.remove("playing");
+  const t = loadTorneo();
+  if (!t) return lobby();
+  const nick = (id) => (state.avatars.find((a) => a.id === id) || { nickname: id }).nickname;
+  const lost = t.results.includes(false), champion = t.results.length >= 3 && !lost;
+  const err = h("p", { class: "error" });
+  const cards = ROUNDS.map((r, i) => {
+    const res = t.results[i];
+    const status = res === true ? ["✓ Superada", "won"] : res === false ? ["✗ Eliminados", "lost"] : i + 1 === t.round && !lost ? ["En juego", "now"] : ["Bloqueada", "locked"];
+    return h("div", { class: `round ${status[1]}` },
+      h("div", { class: "rhead" }, h("b", {}, `Ronda ${i + 1}`), h("span", { class: "rtag" }, status[0])),
+      h("h3", {}, r.name),
+      h("div", { class: "rivals" }, h("small", {}, "Rivales a batir:"), h("b", {}, `🔴 ${nick(t.rivals[i][0])} y ${nick(t.rivals[i][1])}`)),
+      h("small", { class: "muted" }, res === true ? "¡Derrotados!" : res === false ? "Os han ganado esta vez." : i + 1 === t.round ? "Tu próxima partida." : "Esperando rival."));
+  });
+  const play = async () => {
+    unlockVoice();
+    try {
+      const room = await api("POST", "/api/rooms", { mode: "con_bot", signals: t.signals, phrases: t.phrases, level: ROUNDS[t.round - 1].level,
+        target: t.target, partner: t.partner, rivals: t.rivals[t.round - 1], tournament_round: t.round });
+      await api("POST", `/api/rooms/${room.code}/start`);
+      enterRoom(room);
+    } catch (e) { err.textContent = e.message; }
+  };
+  mount(h("section", { class: "panel torneo" },
+    h("small", { class: "kicker" }, "GRAN TORNEO DE MUS.ST"),
+    h("h2", {}, champion ? "🏆 ¡¡Campeones del torneo!! 🏆" : lost ? "Fin del torneo" : "Cuadro de eliminatorias (3 rondas)"),
+    h("p", { class: "muted" }, `Tú y ${nick(t.partner)} contra las parejas del torneo · a ${t.target} tantos`),
+    h("div", { class: "rounds" }, cards),
+    champion || lost
+      ? h("button", { class: "big go", onclick: () => { saveTorneo(null); lobby(); } }, "🏆 Jugar otro torneo")
+      : h("button", { class: "big go", onclick: play }, `⚔️ Comenzar ${ROUNDS[t.round - 1].name}`),
+    h("button", { class: "secondary", onclick: lobby }, "Volver al menú"), err));
+}
+
+// Al acabar una partida del torneo, se apunta el resultado.
+function finishTorneoGame(g, room) {
+  const t = loadTorneo();
+  if (!t || room.tournament_round !== t.round || t.results.length >= t.round) return;
+  const won = g.winner === (g.seat % 2 ? "B" : "A");
+  t.results.push(won);
+  if (won && t.round < 3) t.round += 1;
+  saveTorneo(t);
+}
+
 async function lobby() {
   closeSocket();
   document.body.classList.remove("playing");
@@ -162,12 +302,35 @@ async function lobby() {
   const code = h("input", { type: "text", maxlength: 6, placeholder: "ABC234" });
   const games = h("tbody");
   const profileBox = h("div", { class: "profile" }, h("p", { class: "muted" }, "Calculando tu estilo…"));
-  const createButton = h("button", { onclick: () => create() }, "Jugar");
-  mode.addEventListener("change", () => { createButton.textContent = mode.value === "con_bot" ? "Jugar" : "Crear sala"; });
+  const createButton = h("button", { class: "big go", onclick: () => create() }, "Jugar");
+  // Partida rápida o torneo, a 40 o a 30 tantos, y compañero elegido (sólo contra bots).
+  const opts = { kind: "rapida", target: 40, partner: null };
+  const kind = segmented([["torneo", "🏆 Torneo (3 rondas)"], ["rapida", "🃏 Partida rápida"]], opts.kind, (v) => { opts.kind = v; refresh(); });
+  const target = segmented([[40, "40 piedras (8 amarracos)"], [30, "30 piedras (6 amarracos)"]], opts.target, (v) => { opts.target = v; });
+  const others = state.avatars.filter((a) => a.id !== state.me.avatar);
+  opts.partner = others[0] && others[0].id;
+  const partnerBox = h("div", {}, partnerPicker(others, opts.partner, (id) => { opts.partner = id; }));
+  const botOnly = h("div", { class: "botonly" },
+    h("label", {}, "Modo de juego"), kind,
+    h("label", {}, "Meta del juego"), target,
+    h("label", {}, "Elige a tu compañero"), partnerBox);
+  const refresh = () => {
+    const bots = mode.value === "con_bot";
+    botOnly.hidden = !bots;
+    levelBox.hidden = bots && opts.kind === "torneo";
+    createButton.textContent = !bots ? "Crear sala" : opts.kind === "torneo" ? "🏆 Entrar al torneo" : "Jugar";
+  };
+  mode.addEventListener("change", refresh);
   const create = async () => {
     unlockVoice();
+    if (mode.value === "con_bot" && opts.kind === "torneo") {
+      saveTorneo(newTorneo(opts.partner, opts.target, signals.checked, phrases.checked));
+      return tournamentScreen();
+    }
     try {
-      const room = await api("POST", "/api/rooms", { mode: mode.value, signals: signals.checked, phrases: phrases.checked, level: level.value });
+      const bots = mode.value === "con_bot";
+      const room = await api("POST", "/api/rooms", { mode: mode.value, signals: signals.checked, phrases: phrases.checked, level: level.value,
+        target: bots ? opts.target : 40, partner: bots ? opts.partner : null });
       // Tú + bot: no hay nadie a quien esperar, la partida empieza ya.
       if (room.mode === "con_bot") await api("POST", `/api/rooms/${room.code}/start`);
       enterRoom(room);
@@ -178,14 +341,18 @@ async function lobby() {
     try { enterRoom(await api("POST", `/api/rooms/${encodeURIComponent(code.value.trim().toUpperCase())}/join`)); }
     catch (e) { err.textContent = e.message; }
   };
+  const levelBox = h("div", {}, h("label", {}, "Nivel de los bots"), level);
   const me = state.me;
+  refresh();
   mount(
     h("div", { class: "grid2" },
       h("section", { class: "panel" },
         h("h2", {}, "Nueva partida"),
         h("label", {}, "Modo"), mode,
+        torneoBanner(),
+        botOnly,
         h("label", { class: "check" }, signals, "Con señas (los compañeros se pueden pasar señas… si nadie más mira)"),
-        h("label", {}, "Nivel de los bots"), level,
+        levelBox,
         h("label", { class: "check" }, phrases, "Los bots dicen frases"),
         createButton,
         h("h3", {}, "Unirse con un código"), code, h("button", { onclick: join }, "Unirme"), err),
@@ -240,7 +407,7 @@ function closeSocket() { const ws = state.ws; state.ws = null; state.link = ""; 
 
 function enterRoom(room) {
   closeSocket();
-  state.room = room; state.view = null; state.selected.clear(); state.bubbles = {}; state.lastPhrase = 0;
+  state.room = room; state.view = null; state.selected.clear(); state.bubbles = {}; state.lastPhrase = 0; state.lastCall = null;
   state.summarySeen = 0; state.phraseLog = []; state.dealing = null; state.dealtShown = 0;
   state.link = "Conectando con la mesa…"; state.retries = 0;
   connect(room.code);
@@ -257,6 +424,7 @@ function connect(code) {
     const data = JSON.parse(msg.data);
     if (data.error) { const e = document.getElementById("table-error"); if (e) e.textContent = data.error; return; }
     state.view = data; state.room = data.room;
+    singCalls(data);
     for (const p of data.phrases) if (p.id > state.lastPhrase) {
       state.lastPhrase = p.id;
       const who = data.room.seats[p.seat] ? data.room.seats[p.seat].name : "";
@@ -705,9 +873,16 @@ function signalsPanel(g) {
   const mateLooks = gaze[mate] === me;
   const rivalsLook = [0, 1, 2, 3].filter((s) => s % 2 !== me % 2 && gaze[s] === me).map((s) => g.names[s]);
   const legal = g.legal.actions.filter((a) => a.type === "signal");
+  const open = state.signalsOpen || mateLooks;
+  const toggle = h("button", { class: "small sig-toggle", onclick: () => { state.signalsOpen = !state.signalsOpen; render(); } },
+    open ? "🤫 Ocultar señas" : "🤫 Echar seña");
+  if (!open) {
+    return h("div", { class: "signals closed" }, toggle,
+      rivalsLook.length > 0 && h("span", { class: "warn" }, `👀 Te mira ${rivalsLook.join(" y ")}`));
+  }
   const box = h("div", { class: `signals${mateLooks ? " ready" : ""}` },
     h("div", { class: "sig-head" },
-      h("b", {}, "🤫 Señas"),
+      toggle,
       h("span", {}, mateLooks ? `¡${g.names[mate]} te está mirando! Es el momento.` : `${g.names[mate]} no te mira ahora: espera a que te mire.`),
       rivalsLook.length > 0 && h("span", { class: "warn" }, `👀 Cuidado: te mira ${rivalsLook.join(" y ")}`)));
   if (!legal.length) box.append(h("div", { class: "muted" }, "Ahora no puedes hacer señas (se hacen después de cortar el mus)."));
@@ -752,7 +927,8 @@ function scoreBox(g, ours) {
   return h("div", { class: `teambox ${ours ? "ours" : "theirs"}` },
     h("div", { class: "tb-head" }, h("span", { class: "dot" }), h("span", { class: "tname" }, ours ? "Tu pareja" : "Rivales"),
       h("span", { class: "big" }, String(tantos), h("small", {}, `/${g.target_score}`))),
-    scoreStones(tantos));
+    scoreStones(tantos),
+    h("div", { class: "faltan" }, tantos >= g.target_score ? "¡Juego!" : `Faltan ${g.target_score - tantos}`));
 }
 
 function tableScreen() {
@@ -812,7 +988,9 @@ function tableScreen() {
     room.awaiting_deal && !state.dealing && !handSummary(g, room) ? dealPanel(g) : lanceBoard(g),
     g.signals_seen.length > 0 && h("div", { class: "signals-seen" }, "🤫 Seña vista: " + g.signals_seen.map((x) => `${g.names[x.sender]} → ${SIGNALS[x.signal]} (${SIGNAL_HELP[x.signal] || ""})`).join(", ")),
     g.winner && h("h2", {}, g.winner === (mineTeam ? "B" : "A") ? "🏆 ¡Habéis ganado!" : "Habéis perdido"),
-    g.winner && h("button", { class: "big go", onclick: () => { document.body.classList.remove("playing"); lobby(); } }, "Volver al menú"));
+    g.winner && (room.tournament_round
+      ? h("button", { class: "big go", onclick: () => { finishTorneoGame(g, room); tournamentScreen(); } }, "🏆 Ver el torneo")
+      : h("button", { class: "big go", onclick: () => { document.body.classList.remove("playing"); lobby(); } }, "Volver al menú")));
   const lines = g.events.map((e) => describe(e, g.names, me)).filter(Boolean).slice(-40);
   const log = h("div", { class: "log" }, lines.map((t) => h("div", {}, t)),
     state.phraseLog.slice(-5).map((p) => h("div", { class: "said" }, `💬 ${p}`)));

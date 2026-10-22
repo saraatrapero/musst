@@ -297,3 +297,32 @@ button.sig small { color: #d9c7aa; font-size: .7rem; }
   .seat.seat .cards.shown { gap: 3px; flex-wrap: nowrap; }
   .seat.seat .cards.shown .card.mini { width: 36px; height: 54px; }
 }
+
+/* Opciones de partida (ideas de PC Mus) */
+.seg { display: flex; gap: 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; flex-wrap: wrap; }
+.seg button { flex: 1; margin: 0; border: 0; border-radius: 0; background: transparent; color: var(--ink); font-weight: 700; padding: 10px; }
+.seg button.on { background: linear-gradient(#f6c453, #e09a2d); color: #2b2118; }
+.pcard { display: flex; gap: 12px; align-items: center; margin-top: 8px; padding: 10px; border: 1px solid var(--line); border-radius: 12px; }
+.pcard i { display: block; margin: 4px 0; }
+button.small { font-size: .85rem; padding: 6px 10px; }
+.tbanner { background: #2c1d13; color: #f6c453; border: 1px solid #6b4a2a; border-radius: 10px; padding: 8px 12px; margin-bottom: 8px; }
+.torneo { text-align: center; }
+.torneo .kicker { color: #c8963e; letter-spacing: .2em; font-weight: 800; }
+.torneo h2 { font-family: Georgia, serif; font-size: 1.8rem; margin: 6px 0; }
+.rounds { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin: 16px 0; text-align: left; }
+.round { border: 2px solid var(--line); border-radius: 14px; padding: 12px; opacity: .6; }
+.round.now { border-color: #f6c453; opacity: 1; background: rgba(246,196,83,.08); }
+.round.won { border-color: #3fae6a; opacity: 1; }
+.round.lost { border-color: #d9475f; opacity: 1; }
+.round .rhead { display: flex; justify-content: space-between; align-items: center; }
+.round .rtag { font-size: .75rem; font-weight: 800; border-radius: 999px; padding: 2px 8px; background: #2c1d13; }
+.round.won .rtag { background: #3fae6a; color: #fff; } .round.now .rtag { background: #f6c453; color: #2b2118; } .round.lost .rtag { background: #d9475f; color: #fff; }
+.round h3 { font-family: Georgia, serif; margin: 8px 0; }
+.round .rivals { background: rgba(0,0,0,.2); border-radius: 10px; padding: 8px; margin-bottom: 8px; }
+.round .rivals small, .round .rivals b { display: block; }
+.teambox .faltan { font-size: .75rem; color: #f6c453; font-weight: 700; }
+.signals.closed { display: flex; gap: 10px; align-items: center; border: 0; padding: 4px 0; }
+.sig-toggle { background: transparent; border: 2px solid #f6c453; color: #f6c453; font-weight: 800; }
+.pcard button { background: #f6c453; color: #2b2118; border-color: #c8963e; font-weight: 700; }
+.round .rtag { color: #f3e7d3; }
+.round.locked .rtag { background: #8a7d70; color: #fff; }
