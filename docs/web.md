@@ -183,3 +183,7 @@ que pidió la usuaria (el motor, por defecto, sigue el reglamento):
 - **Meta del juego**: a 40 o a 30 tantos (`target`).
 - En la mesa, «Faltan N» en el marcador y el botón «🤫 Echar seña» (se abre solo
   cuando tu compañero te mira).
+- **Se canta en voz alta**: cada jugador (bots y personas) dice lo que hace con su
+  voz: «Mus», «No hay mus», «Dame dos», «Paso», «Envido», «Quiero», «No quiero»,
+  «¡Órdago!», y «Pares sí/no» y «Juego sí/no» en orden desde la mano. Los bots
+  piensan 1,3 s por jugada para que dé tiempo a oírlo.

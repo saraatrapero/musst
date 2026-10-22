@@ -5,7 +5,7 @@
 const state = {
   me: null, avatars: [], notice: "", room: null, view: null, ws: null, selected: new Set(), bubbles: {},
   lastPhrase: 0, quiet: false, summarySeen: 0, phraseLog: [], deckImages: [],
-  dealing: null, dealtShown: 0, voice: readPref("voz", true), signalsOpen: false,
+  dealing: null, dealtShown: 0, voice: readPref("voz", true), signalsOpen: false, lastCall: null,
 };
 
 function readPref(key, fallback) {
@@ -25,6 +25,42 @@ function speak(text, avatarId) {
   u.rate = 0.95 + ((i * 13) % 20) / 100;
   speechSynthesis.speak(u);
 }
+// Cada jugador «canta» en voz alta lo que hace (mus, paso, envido, quiero…), como en la
+// mesa de verdad. Sólo lo nuevo: al entrar en la sala no se repite lo ya hablado.
+const DISCARD_WORDS = { 1: "Dame una", 2: "Dame dos", 3: "Dame tres", 4: "Dame cuatro" };
+function callFor(e) {
+  const d = e.data;
+  switch (e.type) {
+    case "MusRequested": return [[d.seat, "Mus"]];
+    case "MusCut": return [[d.seat, "No hay mus"]];
+    case "DiscardDeclared": return [[d.seat, DISCARD_WORDS[d.count] || `Dame ${d.count}`]];
+    case "Passed": return [[d.seat, "Paso"]];
+    case "BetPlaced": return [[d.seat, d.amount === 2 ? "Envido" : `Envido ${d.amount}`]];
+    case "BetRaised": return [[d.seat, `${d.increment} más`]];
+    case "OrdagoDeclared": return [[d.seat, "¡Órdago!"]];
+    case "BetAccepted": case "OrdagoAccepted": return [[d.seat, "Quiero"]];
+    case "BetRejected": return [[d.seat, "No quiero"]];
+    case "ParesDeclared": return d.holders.map((x, i) => [i, x ? "Pares sí" : "Pares no"]);
+    case "JuegoDeclared": return d.holders.map((x, i) => [i, x ? "Juego sí" : "Juego no"]);
+    default: return [];
+  }
+}
+function singCalls(data) {
+  const events = (data.game && data.game.events) || [];
+  const last = events.length ? events[events.length - 1].seq : 0;
+  if (state.lastCall == null || last < state.lastCall) { state.lastCall = last; return; }
+  const fresh = events.filter((e) => e.seq > state.lastCall);
+  state.lastCall = last;
+  if (state.quiet || state.dealtShown < data.game.hand_number - 1) return;
+  const mano = data.game.mano ?? 0;
+  for (const e of fresh) {
+    let calls = callFor(e);
+    // Pares y juego se cantan en orden, empezando por la mano.
+    if (e.type === "ParesDeclared" || e.type === "JuegoDeclared") calls = [0, 1, 2, 3].map((k) => calls[(mano + k) % 4]);
+    for (const [seat, text] of calls) speak(text, data.room.seats[seat] && data.room.seats[seat].avatar.id);
+  }
+}
+
 // iPhone/iPad sólo dejan hablar después de un toque: se «despierta» la voz con el primero.
 function unlockVoice() {
   if ("speechSynthesis" in window) { const u = new SpeechSynthesisUtterance(" "); u.volume = 0; speechSynthesis.speak(u); }
@@ -371,7 +407,7 @@ function closeSocket() { const ws = state.ws; state.ws = null; state.link = ""; 
 
 function enterRoom(room) {
   closeSocket();
-  state.room = room; state.view = null; state.selected.clear(); state.bubbles = {}; state.lastPhrase = 0;
+  state.room = room; state.view = null; state.selected.clear(); state.bubbles = {}; state.lastPhrase = 0; state.lastCall = null;
   state.summarySeen = 0; state.phraseLog = []; state.dealing = null; state.dealtShown = 0;
   state.link = "Conectando con la mesa…"; state.retries = 0;
   connect(room.code);
@@ -388,6 +424,7 @@ function connect(code) {
     const data = JSON.parse(msg.data);
     if (data.error) { const e = document.getElementById("table-error"); if (e) e.textContent = data.error; return; }
     state.view = data; state.room = data.room;
+    singCalls(data);
     for (const p of data.phrases) if (p.id > state.lastPhrase) {
       state.lastPhrase = p.id;
       const who = data.room.seats[p.seat] ? data.room.seats[p.seat].name : "";

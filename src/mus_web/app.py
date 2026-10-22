@@ -69,7 +69,7 @@ class Settings:
     database_url: str = DEFAULT_DATABASE_URL
     secure_cookies: bool = False
     session_days: int = 30
-    bot_delay: float = 0.9  # segundos que «piensa» un bot (para poder seguir la mesa)
+    bot_delay: float = 1.3  # segundos que «piensa» un bot (para seguir la mesa y oír lo que canta)
     hand_pause: float = 3.0  # pausa al acabar una mano para ver las cartas enseñadas
     tick_interval: float = 1.5  # un momento del reloj de miradas, con señas
     password_n: int = 2**14  # coste de scrypt (se reduce en los tests)
