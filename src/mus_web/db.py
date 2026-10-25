@@ -71,6 +71,21 @@ class ProfileRow(Base):
     user: Mapped[User] = relationship(back_populates="profile")
 
 
+class AdminRow(Base):
+    """Usuarios a los que un administrador dio permisos desde el panel.
+
+    Los de ``MUSST_ADMINS`` lo son siempre; esta tabla añade otros sin tocar la
+    configuración (tabla aparte, como ``player_profiles``, para no migrar ``users``).
+    """
+
+    __tablename__ = "admins"
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    granted_at: Mapped[datetime] = mapped_column(default=utcnow)
+
+
 class LoginSession(Base):
     __tablename__ = "login_sessions"
 

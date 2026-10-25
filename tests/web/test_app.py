@@ -598,3 +598,103 @@ def test_admin_stats_skip_games_without_people_against_bots() -> None:
             session.add(bots_only)
         assert client.get("/api/admin/stats").json()["bots_vs_people"] == []
     assert win_rate([True, False])["rate"] == 0.5
+
+
+def admin_client() -> TestClient:
+    return TestClient(create_app(fast_settings(admins=frozenset({"sara"}))))
+
+
+def test_admin_lists_and_inspects_users() -> None:
+    with admin_client() as client:
+        pepe = register(client, "pepe")
+        assert client.get("/api/admin/users").status_code == 403
+        code = start_room(client)
+        client.post(f"/api/rooms/{code}/start")
+        play_over_socket(client, code)
+        client.post("/api/logout")
+        sara = register(client, "sara")
+        users = {u["username"]: u for u in client.get("/api/admin/users").json()}
+        assert users["sara"]["admin_source"] == "config"
+        assert users["pepe"]["admin_source"] is None
+        assert users["pepe"]["games_played"] == 1
+        assert users["pepe"]["style"]
+        assert users["sara"]["open_sessions"] == 1
+        detail = client.get(f"/api/admin/users/{pepe['id']}").json()
+        assert detail["profile"]["decisions"] > 0
+        (game,) = detail["games"]
+        assert len(game["players"]) == 4
+        assert any(p["user_id"] == pepe["id"] for p in game["players"])
+        assert client.get(f"/api/admin/users/{sara['id']}").json()["profile"] is None
+        assert client.get("/api/admin/users/999").status_code == 404
+        stats = client.get("/api/admin/stats").json()
+        kpis = stats["kpis"]
+        assert kpis["users"] == 2
+        assert kpis["new_users_7d"] == 2
+        assert kpis["active_users_7d"] == 2
+        assert kpis["games_today"] == 1
+        assert kpis["rooms_open"] == 1
+        assert len(stats["games_per_day"]) == app_module.STATS_DAYS
+        assert stats["games_per_day"][-1]["games"] == 1
+        assert stats["users_per_day"][-1]["users"] == 2
+        assert stats["modes"] == {"con_bot": 1}
+        assert stats["signals"] == {"con": 0, "sin": 1}
+        assert sum(stats["styles"].values()) == 2
+        (top,) = stats["top_players"]
+        assert top["username"] == "pepe"
+        (recent,) = stats["recent_games"]
+        assert recent["id"] == game["id"]
+
+
+def test_admin_edits_users() -> None:
+    with admin_client() as client:
+        pepe = register(client, "pepe")
+        client.post("/api/logout")
+        sara = register(client, "sara")
+        edit = f"/api/admin/users/{pepe['id']}"
+        changed = client.patch(edit, json={"username": "pepa", "avatar": "verbena"}).json()
+        assert changed["username"] == "pepa"
+        assert changed["avatar"] == "verbena"
+        assert client.patch(edit, json={"username": "sara"}).status_code == 409
+        assert client.patch(edit, json={"username": "x"}).status_code == 422
+        assert client.patch(edit, json={"avatar": "nadie"}).status_code == 422
+        assert client.patch(edit, json={"password": "corta"}).status_code == 422
+        assert client.patch(edit, json={"password": "nuevaclave1"}).status_code == 200
+        # Hacerle administrador desde el panel, y quitárselo.
+        assert client.patch(edit, json={"admin": True}).json()["admin_source"] == "panel"
+        assert client.patch(edit, json={"admin": True}).json()["admin_source"] == "panel"
+        assert client.patch(edit, json={"admin": False}).json()["admin_source"] is None
+        mine = f"/api/admin/users/{sara['id']}"
+        assert client.patch(mine, json={"admin": False}).status_code == 409
+        assert client.patch(mine, json={"username": "sarita"}).status_code == 409
+        assert client.patch("/api/admin/users/999", json={}).status_code == 404
+        client.patch(edit, json={"admin": True})
+        client.post("/api/logout")
+        login = {"username": "pepa", "password": "nuevaclave1"}
+        assert client.post("/api/login", json=login).status_code == 200
+        assert client.get("/api/me").json()["admin"] is True
+        assert client.patch(mine, json={"admin": False}).status_code == 409
+        assert client.delete(mine).status_code == 409
+        # Un administrador del panel no puede quitarse sus propios permisos.
+        own = client.patch(edit, json={"admin": False})
+        assert own.status_code == 409
+
+
+def test_admin_closes_sessions_and_deletes_users() -> None:
+    with admin_client() as client:
+        pepe = register(client, "pepe")
+        code = start_room(client)
+        client.post(f"/api/rooms/{code}/start")
+        play_over_socket(client, code)
+        pepe_cookie = client.cookies.get("musst_session")
+        client.post("/api/logout")
+        sara = register(client, "sara")
+        assert client.post(f"/api/admin/users/{pepe['id']}/logout").json() == {"ok": True}
+        users = {u["username"]: u for u in client.get("/api/admin/users").json()}
+        assert users["pepe"]["open_sessions"] == 0
+        assert pepe_cookie
+        assert client.delete(f"/api/admin/users/{sara['id']}").status_code == 409
+        assert client.delete("/api/admin/users/999").status_code == 404
+        assert client.delete(f"/api/admin/users/{pepe['id']}").json() == {"ok": True}
+        assert [u["username"] for u in client.get("/api/admin/users").json()] == ["sara"]
+        (game,) = client.get("/api/admin/stats").json()["recent_games"]
+        assert app_module.DELETED_NAME in [p["name"] for p in game["players"]]

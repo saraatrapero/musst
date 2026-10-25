@@ -22,10 +22,10 @@ import random
 import re
 import secrets
 import time
-from collections import defaultdict
+from collections import Counter, defaultdict
 from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass, field
-from datetime import timedelta
+from datetime import datetime, timedelta
 from importlib import resources
 from typing import Annotated, Any
 from urllib.parse import urlsplit
@@ -34,13 +34,23 @@ from fastapi import Cookie, Depends, FastAPI, HTTPException, Request, Response, 
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from sqlalchemy import select, text
+from sqlalchemy import func, select, text
+from sqlalchemy.orm import Session
 from starlette.websockets import WebSocketDisconnect
 
 from mus_engine.ai.profiles import PlayerProfile
 from mus_web.avatars_pack import avatars_by_id, load_pack
 from mus_web.codec import record_to_json
-from mus_web.db import Database, GameRow, GameSeat, LoginSession, ProfileRow, User, utcnow
+from mus_web.db import (
+    AdminRow,
+    Database,
+    GameRow,
+    GameSeat,
+    LoginSession,
+    ProfileRow,
+    User,
+    utcnow,
+)
 from mus_web.rooms import BOT_LEVELS, DEFAULT_LEVEL, Mode, Room, RoomError, new_code
 from mus_web.security import (
     CredentialError,
@@ -60,6 +70,7 @@ LOCKOUT_SECONDS = 300
 MAX_ROOMS = 500
 MAX_MESSAGE_BYTES = 4096
 DELETED_NAME = "(cuenta borrada)"
+STATS_DAYS = 30  # días de las gráficas de actividad del panel de administración
 AVATAR_POSES = frozenset(
     {"frente", "izquierda", "derecha", "enfrente", "contento", "fastidiado", "pillo"}
 )
@@ -75,8 +86,9 @@ class Settings:
     tick_interval: float = 1.5  # un momento del reloj de miradas, con señas
     password_n: int = 2**14  # coste de scrypt (se reduce en los tests)
     seed_source: Callable[[], int] = field(default=lambda: secrets.randbits(63))
-    # Usuarios administradores (en minúsculas): ven las estadísticas y pueden poner una
-    # contraseña nueva a quien la olvide. En Render, variable MUSST_ADMINS="sara,otro".
+    # Usuarios administradores (en minúsculas): ven el panel de administración (usuarios
+    # y estadísticas). En Render, variable MUSST_ADMINS="sara,otro". Desde el panel se
+    # puede hacer administradores a otros usuarios (tabla ``admins``).
     admins: frozenset[str] = frozenset()
 
     @classmethod
@@ -120,6 +132,13 @@ class PasswordResetIn(BaseModel):
 
 class AvatarIn(BaseModel):
     avatar: str
+
+
+class UserEditIn(BaseModel):
+    username: str | None = None
+    avatar: str | None = None
+    password: str | None = None
+    admin: bool | None = None
 
 
 class DeleteIn(BaseModel):
@@ -375,7 +394,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             secure=settings.secure_cookies,
         )
 
-    def me_json(user: User) -> dict[str, Any]:
+    def me_json(user: User, session: Session | None = None) -> dict[str, Any]:
         return {
             "id": user.id,
             "username": user.username,
@@ -383,14 +402,20 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "games_played": user.games_played,
             "games_won": user.games_won,
             "created_at": user.created_at.isoformat(),
-            "admin": is_admin(user),
+            "admin": admin_source(user, session) is not None,
         }
 
-    def is_admin(user: User) -> bool:
-        return user.username.lower() in settings.admins
+    def admin_source(user: User, session: Session | None = None) -> str | None:
+        """«config» (MUSST_ADMINS), «panel» (lo nombró otro administrador) o None."""
+        if user.username.lower() in settings.admins:
+            return "config"
+        if session is None:
+            with db.session() as own:
+                return admin_source(user, own)
+        return "panel" if session.get(AdminRow, user.id) is not None else None
 
     def require_admin(user: User) -> None:
-        if not is_admin(user):
+        if admin_source(user) is None:
             raise HTTPException(403, "Sólo para administradores")
 
     def check_avatar(avatar: str) -> str:
@@ -534,7 +559,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             ]
             counts = {} if row.profile is None else dict(row.profile.counts)
             return {
-                "user": me_json(row),
+                "user": me_json(row, session),
                 "consent_at": row.consent_at.isoformat(),
                 "games": games,
                 "profile": counts,
@@ -548,41 +573,128 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             assert row is not None
             if not verify_password(body.password, row.password_hash):
                 raise HTTPException(401, "Contraseña incorrecta")
-            for seat in row.seats:  # su nombre desaparece también de los registros
-                record = dict(seat.game.record)
-                names = list(record["player_names"])
-                names[seat.seat] = DELETED_NAME
-                record["player_names"] = names
-                seat.game.record = record
-            session.delete(row)
+            erase_user(session, row)
         response.delete_cookie(COOKIE)
         return {"ok": True}
 
+    def erase_user(session: Session, row: User) -> None:
+        """Borra la cuenta, sus sesiones, su perfil y su nombre de los registros."""
+        for seat in row.seats:  # su nombre desaparece también de los registros
+            record = dict(seat.game.record)
+            names = list(record["player_names"])
+            names[seat.seat] = DELETED_NAME
+            record["player_names"] = names
+            seat.game.record = record
+        session.delete(row)
+
     # --- Administración ------------------------------------------------------------------
 
-    @app.get("/api/admin/stats")
-    def admin_stats(user: CurrentUser) -> dict[str, Any]:
-        """Usuarios, partidas y cómo les va a los bots contra personas (con su IC 95 %)."""
+    def find_user(session: Session, user_id: int) -> User:
+        row = session.get(User, user_id)
+        if row is None:
+            raise HTTPException(404, "Ese usuario no existe")
+        return row
+
+    def last_activity(row: User) -> datetime:
+        """Lo último que hizo: entrar o terminar una partida."""
+        moments = [row.created_at]
+        moments += [login.created_at for login in row.sessions]
+        moments += [seat.game.finished_at for seat in row.seats]
+        return max(moments)
+
+    def user_json(session: Session, row: User) -> dict[str, Any]:
+        profile = (
+            PlayerProfile() if row.profile is None else PlayerProfile.from_json(row.profile.counts)
+        )
+        now = utcnow()
+        return {
+            **me_json(row, session),
+            "admin_source": admin_source(row, session),
+            "last_active": last_activity(row).isoformat(),
+            "open_sessions": sum(login.expires_at > now for login in row.sessions),
+            "style": profile.style(),
+            "decisions": profile.decisions,
+        }
+
+    @app.get("/api/admin/users")
+    def admin_users(user: CurrentUser) -> list[dict[str, Any]]:
+        """Todos los usuarios, con su actividad y el estilo que la IA ve en ellos."""
         require_admin(user)
         with db.session() as session:
-            users = len(session.scalars(select(User.id)).all())
-            games = session.scalars(select(GameRow)).all()
-            versus: dict[str, list[bool]] = defaultdict(list)
-            for game in games:
-                people = [s for s in game.seats if s.user_id is not None]
-                if not people:
-                    continue
-                team = people[0].seat % 2
-                rivals = [s for s in game.seats if s.seat % 2 != team]
-                if rivals and all(s.bot is not None for s in rivals):
-                    versus[str(rivals[0].bot)].append(rivals[0].won)
+            rows = session.scalars(select(User).order_by(User.id)).all()
+            return [user_json(session, row) for row in rows]
+
+    @app.get("/api/admin/users/{user_id}")
+    def admin_user(user_id: int, user: CurrentUser) -> dict[str, Any]:
+        """Un usuario en detalle: su perfil de juego y sus últimas partidas."""
+        require_admin(user)
+        with db.session() as session:
+            row = find_user(session, user_id)
+            seats = sorted(row.seats, key=lambda s: s.game_id, reverse=True)[:20]
             return {
-                "users": users,
-                "games": len(games),
-                "bots_vs_people": [
-                    {"bot": bot, **win_rate(results)} for bot, results in sorted(versus.items())
-                ],
+                **user_json(session, row),
+                "profile": profile_json(row.id) if row.profile is not None else None,
+                "games": [game_json(seat.game) | {"won": seat.won} for seat in seats],
             }
+
+    @app.patch("/api/admin/users/{user_id}")
+    def admin_edit_user(user_id: int, body: UserEditIn, user: CurrentUser) -> dict[str, Any]:
+        """Cambia nombre, avatar, contraseña o permisos de administrador."""
+        require_admin(user)
+        with db.session() as session:
+            row = find_user(session, user_id)
+            source = admin_source(row, session)
+            try:
+                username = None if body.username is None else check_username(body.username)
+                password = None if body.password is None else check_password(body.password)
+            except CredentialError as error:
+                raise HTTPException(422, str(error)) from error
+            if username is not None and username != row.username:
+                if source == "config":
+                    raise HTTPException(
+                        409, "Es administrador por MUSST_ADMINS: cámbiale el nombre allí"
+                    )
+                taken = session.scalar(select(User).where(User.username == username))
+                if taken is not None:
+                    raise HTTPException(409, "Ese nombre de usuario ya existe")
+                row.username = username
+            if body.avatar is not None:
+                row.avatar_id = check_avatar(body.avatar)
+            if password is not None:
+                row.password_hash = hash_password(password, n=settings.password_n)
+                row.sessions.clear()  # quien la tuviera abierta tiene que volver a entrar
+            if body.admin is not None and body.admin != (source is not None):
+                if source == "config":
+                    raise HTTPException(409, "Es administrador por MUSST_ADMINS")
+                if row.id == user.id:
+                    raise HTTPException(409, "No puedes quitarte tus propios permisos")
+                if body.admin:
+                    session.add(AdminRow(user_id=row.id))
+                else:
+                    session.delete(session.get(AdminRow, row.id))
+            session.flush()
+            return user_json(session, row)
+
+    @app.post("/api/admin/users/{user_id}/logout")
+    def admin_logout_user(user_id: int, user: CurrentUser) -> dict[str, bool]:
+        """Cierra todas las sesiones abiertas de un usuario."""
+        require_admin(user)
+        with db.session() as session:
+            find_user(session, user_id).sessions.clear()
+        return {"ok": True}
+
+    @app.delete("/api/admin/users/{user_id}")
+    def admin_delete_user(user_id: int, user: CurrentUser) -> dict[str, bool]:
+        """Borra una cuenta como si la borrara su dueño (su nombre sale de los registros)."""
+        require_admin(user)
+        if user_id == user.id:
+            raise HTTPException(409, "Para borrar tu propia cuenta, hazlo desde tu perfil")
+        with db.session() as session:
+            row = find_user(session, user_id)
+            if admin_source(row, session) == "config":
+                raise HTTPException(409, "Es administrador por MUSST_ADMINS: quítalo de allí")
+            erase_user(session, row)
+        return {"ok": True}
 
     @app.post("/api/admin/password")
     def admin_password(body: PasswordResetIn, user: CurrentUser) -> dict[str, bool]:
@@ -599,6 +711,105 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             target.password_hash = hash_password(password, n=settings.password_n)
             target.sessions.clear()
         return {"ok": True}
+
+    @app.get("/api/admin/stats")
+    def admin_stats(user: CurrentUser) -> dict[str, Any]:
+        """Todo lo que cabe en el panel: actividad, partidas, bots contra personas…"""
+        require_admin(user)
+        now = utcnow()
+        today = now.date()
+        days = [today - timedelta(days=d) for d in range(STATS_DAYS - 1, -1, -1)]
+        week_ago = now - timedelta(days=7)
+        with db.session() as session:
+            users = session.scalars(select(User)).all()
+            games = session.scalars(select(GameRow).order_by(GameRow.id)).all()
+            versus: dict[str, list[bool]] = defaultdict(list)
+            for game in games:
+                people = [s for s in game.seats if s.user_id is not None]
+                if not people:
+                    continue
+                team = people[0].seat % 2
+                rivals = [s for s in game.seats if s.seat % 2 != team]
+                if rivals and all(s.bot is not None for s in rivals):
+                    versus[str(rivals[0].bot)].append(rivals[0].won)
+            games_by_day = Counter(g.finished_at.date() for g in games)
+            users_by_day = Counter(u.created_at.date() for u in users)
+            styles = Counter(
+                "por conocer"
+                if u.profile is None
+                else PlayerProfile.from_json(u.profile.counts).style()
+                for u in users
+            )
+            active = [u for u in users if last_activity(u) >= week_ago]
+            ranked = sorted(
+                (u for u in users if u.games_played),
+                key=lambda u: (u.games_won, u.games_won / u.games_played),
+                reverse=True,
+            )
+            return {
+                "users": len(users),
+                "games": len(games),
+                "kpis": {
+                    "users": len(users),
+                    "new_users_7d": sum(u.created_at >= week_ago for u in users),
+                    "active_users_7d": len(active),
+                    "games": len(games),
+                    "games_7d": sum(g.finished_at >= week_ago for g in games),
+                    "games_today": games_by_day[today],
+                    "open_sessions": session.scalar(
+                        select(func.count())
+                        .select_from(LoginSession)
+                        .where(LoginSession.expires_at > now)
+                    ),
+                    "rooms_open": len(hub.rooms),
+                    "rooms_playing": sum(r.started and not r.finished for r in hub.rooms.values()),
+                    "people_connected": sum(len(s) for s in hub.sockets.values()),
+                },
+                "games_per_day": [{"day": d.isoformat(), "games": games_by_day[d]} for d in days],
+                "users_per_day": [{"day": d.isoformat(), "users": users_by_day[d]} for d in days],
+                "modes": dict(Counter(g.mode for g in games)),
+                "signals": {
+                    "con": sum(g.signals for g in games),
+                    "sin": sum(not g.signals for g in games),
+                },
+                "styles": dict(styles),
+                "bots_vs_people": [
+                    {"bot": bot, **win_rate(results)} for bot, results in sorted(versus.items())
+                ],
+                "top_players": [
+                    {
+                        "id": u.id,
+                        "username": u.username,
+                        "avatar": u.avatar_id,
+                        "games": u.games_played,
+                        "wins": u.games_won,
+                        "rate": round(u.games_won / u.games_played, 4),
+                    }
+                    for u in ranked[:10]
+                ],
+                "recent_games": [game_json(g) for g in reversed(games[-20:])],
+            }
+
+    def game_json(game: GameRow) -> dict[str, Any]:
+        names = game.record.get("player_names", [])
+        seats = {s.seat: s for s in game.seats}  # quien borró su cuenta ya no tiene asiento
+        return {
+            "id": game.id,
+            "finished_at": game.finished_at.isoformat(),
+            "mode": game.mode,
+            "signals": game.signals,
+            "winner_team": game.winner_team,
+            "tantos": game.final_tantos,
+            "players": [
+                {
+                    "name": name,
+                    "bot": seat.bot if (seat := seats.get(i)) else None,
+                    "user_id": seat.user_id if seat else None,
+                    "won": game.winner_team == "AB"[i % 2],
+                }
+                for i, name in enumerate(names)
+            ],
+        }
 
     # --- Salas ---------------------------------------------------------------------------
 

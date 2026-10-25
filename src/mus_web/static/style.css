@@ -327,3 +327,42 @@ button.small { font-size: .85rem; padding: 6px 10px; }
 .round .rtag { color: #f3e7d3; }
 .round.locked .rtag { background: #8a7d70; color: #fff; }
 .banner.notice { background: #183a26; border: 1px solid #3fae6a; color: #e6f6ec; font-weight: 600; }
+
+/* --- Panel de administración --- */
+.adminhead { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.adminhead h2, .adminhead h3 { margin: 0 auto 0 0; }
+.adminhead input[type=text] { flex: 1 1 200px; width: auto; }
+.adminhead .face { width: 40px; height: 40px; margin: 0; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 12px 0; }
+.kpi { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--bg); }
+.kpi .kv { font-size: 1.8rem; font-weight: 700; }
+.kpi .kl { font-weight: 600; }
+.kpi .ks { font-size: .8rem; }
+.chartbox { margin: 8px 0; min-width: 0; }
+.chartbox figcaption { font-weight: 600; margin-bottom: 4px; }
+svg.chart { width: 100%; height: auto; display: block; }
+svg.chart .grid { stroke: var(--line); stroke-width: 1; }
+svg.chart .base { stroke: var(--muted); stroke-width: 1; }
+svg.chart .axis { fill: var(--muted); font-size: 11px; }
+svg.chart .bar rect { fill: var(--felt); }
+svg.chart .bar rect.hit { fill: transparent; }
+svg.chart .bar:hover rect:not(.hit) { fill: var(--felt-dark); }
+.hbars { display: grid; gap: 6px; }
+.hbar { display: grid; grid-template-columns: minmax(80px, 38%) 1fr 3ch; gap: 8px; align-items: center; font-size: .9rem; }
+.hbar .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hbar .track { height: 12px; background: var(--line); border-radius: 6px; overflow: hidden; }
+.hbar .fill { display: block; height: 100%; background: var(--felt); border-radius: 6px; }
+.hbar .val { text-align: right; font-variant-numeric: tabular-nums; }
+.scroll { overflow-x: auto; }
+table.list td.win { font-weight: 700; }
+table.users .who { display: flex; align-items: center; gap: 6px; }
+table.users .who .face { width: 28px; height: 28px; flex: none; margin: 0; }
+table.users .actions { white-space: nowrap; }
+table.users .actions button { padding: 4px 8px; font-size: .85rem; }
+.badge { font-size: .7rem; background: var(--gold); color: #2b2118; border-radius: 6px; padding: 1px 6px; }
+.userdetail { background: var(--bg); }
+.cicell { min-width: 140px; }
+.citrack { position: relative; display: block; height: 14px; background: var(--line); border-radius: 7px; }
+.citrack .half { position: absolute; left: 50%; top: -3px; bottom: -3px; width: 2px; background: var(--muted); }
+.citrack .ci { position: absolute; top: 3px; height: 8px; background: var(--felt); opacity: .45; border-radius: 4px; }
+.citrack .dot { position: absolute; top: 1px; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; background: var(--felt-dark); border: 2px solid var(--panel); }

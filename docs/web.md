@@ -187,14 +187,35 @@ defecto, sigue el reglamento):
   voz: «Mus», «No hay mus», «Dame dos», «Paso», «Envido», «Quiero», «No quiero»,
   «¡Órdago!», y «Pares sí/no» y «Juego sí/no» en orden desde la mano. Los bots
   piensan 1,3 s por jugada para que dé tiempo a oírlo.
-
-## Administración
-
-Los usuarios de `MUSST_ADMINS` (en Render, `render.yaml`: `sara`) ven en el lobby un
-panel con el número de usuarios y partidas, cómo les va a los bots contra personas
-(porcentaje con intervalo de Wilson del 95 %) y un formulario para poner una
-contraseña nueva a quien la olvide (cierra sus sesiones abiertas).
 - Al acabar la jugada, «Jugada terminada» al menos 2,5 s (y hasta que terminen de
   hablar) antes del resumen.
 - Si tu compañero contesta un envite antes que tú, un aviso lo explica: con que
   quiera uno de la pareja basta, así que a ti ya no te pregunta.
+
+## Administración
+
+Son administradores los usuarios de `MUSST_ADMINS` (en Render, `render.yaml`: `sara`)
+y los que otro administrador nombre desde el panel (tabla `admins`). En el lobby ven
+«Abrir el panel de administración», con cuatro pestañas:
+
+- **Resumen**: usuarios (nuevos y activos en 7 días), partidas (total, semana, hoy),
+  partidas en juego, personas conectadas y sesiones abiertas; gráficas de partidas y
+  altas por día (30 días); reparto por modo, con o sin señas y estilo de juego según
+  la IA; y los mejores jugadores.
+- **Usuarios**: buscador, tabla con partidas, % ganadas, estilo, última actividad y
+  alta, y descarga en CSV. Por usuario:
+  - **Ver**: su perfil de juego y sus últimas 20 partidas; cerrar sus sesiones.
+  - **Editar**: nombre, avatar, contraseña nueva (cierra sus sesiones) y permisos de
+    administrador.
+  - **Borrar**: como si borrara la cuenta su dueño (su nombre sale de los registros).
+- **Partidas**: las últimas 20, con quién jugó en cada pareja y quién ganó.
+- **Bots**: cómo les va a los bots contra personas (porcentaje con intervalo de
+  Wilson del 95 %).
+
+Límites: nadie se borra ni se quita sus propios permisos desde el panel, y a un
+administrador de `MUSST_ADMINS` no se le cambia el nombre, ni se le quitan los
+permisos, ni se le borra (se hace en la configuración).
+
+API: `GET /api/admin/stats`, `GET /api/admin/users`, `GET|PATCH|DELETE
+/api/admin/users/{id}`, `POST /api/admin/users/{id}/logout` y `POST
+/api/admin/password`.
