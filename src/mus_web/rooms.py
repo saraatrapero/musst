@@ -22,7 +22,7 @@ from typing import Any
 
 from mus_engine.ai.profiles import PlayerProfile, ProfileTracker
 from mus_engine.bots.base import Bot, BotContext
-from mus_engine.bots.medium_bot import MediumBot
+from mus_engine.bots.medium_bot import LearningMediumBot
 from mus_engine.bots.simple_bot import SimpleBot
 from mus_engine.config import GameConfig
 from mus_engine.errors import MusEngineError
@@ -47,7 +47,8 @@ HUMAN_SEATS: dict[Mode, tuple[SeatId, ...]] = {
 }
 
 # Nivel de los bots de la sala (docs/ai-design.md §4).
-BOT_LEVELS: dict[str, Callable[[], Bot]] = {"sencillo": SimpleBot, "medio": MediumBot}
+# El nivel medio de la web aprende de cada persona (su perfil se guarda entre partidas).
+BOT_LEVELS: dict[str, Callable[[], Bot]] = {"sencillo": SimpleBot, "medio": LearningMediumBot}
 DEFAULT_LEVEL = "medio"
 
 CODE_ALPHABET = "".join(c for c in string.ascii_uppercase + string.digits if c not in "O0I1")

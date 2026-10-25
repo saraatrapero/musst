@@ -1,0 +1,320 @@
+{
+  "farolero": {
+    "1.ª partida": {
+      "gana_con_perfil": {
+        "media": 0.708,
+        "low": 0.523,
+        "high": 0.894,
+        "n": 24
+      },
+      "gana_sin_perfil": {
+        "media": 0.583,
+        "low": 0.382,
+        "high": 0.785,
+        "n": 24
+      },
+      "ventaja_partidas": {
+        "media": 0.125,
+        "low": -0.054,
+        "high": 0.304,
+        "n": 24
+      },
+      "ventaja_tantos": {
+        "media": 4.042,
+        "low": -0.694,
+        "high": 8.778,
+        "n": 24
+      }
+    },
+    "2.ª a 5.ª": {
+      "gana_con_perfil": {
+        "media": 0.646,
+        "low": 0.55,
+        "high": 0.742,
+        "n": 96
+      },
+      "gana_sin_perfil": {
+        "media": 0.708,
+        "low": 0.617,
+        "high": 0.8,
+        "n": 96
+      },
+      "ventaja_partidas": {
+        "media": -0.062,
+        "low": -0.149,
+        "high": 0.024,
+        "n": 96
+      },
+      "ventaja_tantos": {
+        "media": -0.927,
+        "low": -3.454,
+        "high": 1.6,
+        "n": 96
+      }
+    },
+    "6.ª a 15.ª": {
+      "gana_con_perfil": {
+        "media": 0.608,
+        "low": 0.546,
+        "high": 0.67,
+        "n": 240
+      },
+      "gana_sin_perfil": {
+        "media": 0.646,
+        "low": 0.585,
+        "high": 0.706,
+        "n": 240
+      },
+      "ventaja_partidas": {
+        "media": -0.037,
+        "low": -0.093,
+        "high": 0.018,
+        "n": 240
+      },
+      "ventaja_tantos": {
+        "media": -1.15,
+        "low": -3.025,
+        "high": 0.725,
+        "n": 240
+      }
+    },
+    "16.ª o más": {
+      "gana_con_perfil": {
+        "media": 0.675,
+        "low": 0.627,
+        "high": 0.723,
+        "n": 360
+      },
+      "gana_sin_perfil": {
+        "media": 0.678,
+        "low": 0.629,
+        "high": 0.726,
+        "n": 360
+      },
+      "ventaja_partidas": {
+        "media": -0.003,
+        "low": -0.051,
+        "high": 0.046,
+        "n": 360
+      },
+      "ventaja_tantos": {
+        "media": -0.35,
+        "low": -1.982,
+        "high": 1.282,
+        "n": 360
+      }
+    }
+  },
+  "miedoso": {
+    "1.ª partida": {
+      "gana_con_perfil": {
+        "media": 0.917,
+        "low": 0.804,
+        "high": 1.03,
+        "n": 24
+      },
+      "gana_sin_perfil": {
+        "media": 0.875,
+        "low": 0.74,
+        "high": 1.01,
+        "n": 24
+      },
+      "ventaja_partidas": {
+        "media": 0.042,
+        "low": -0.102,
+        "high": 0.185,
+        "n": 24
+      },
+      "ventaja_tantos": {
+        "media": 4.292,
+        "low": 0.523,
+        "high": 8.06,
+        "n": 24
+      }
+    },
+    "2.ª a 5.ª": {
+      "gana_con_perfil": {
+        "media": 0.948,
+        "low": 0.903,
+        "high": 0.993,
+        "n": 96
+      },
+      "gana_sin_perfil": {
+        "media": 0.76,
+        "low": 0.675,
+        "high": 0.846,
+        "n": 96
+      },
+      "ventaja_partidas": {
+        "media": 0.188,
+        "low": 0.104,
+        "high": 0.271,
+        "n": 96
+      },
+      "ventaja_tantos": {
+        "media": 12.677,
+        "low": 9.988,
+        "high": 15.366,
+        "n": 96
+      }
+    },
+    "6.ª a 15.ª": {
+      "gana_con_perfil": {
+        "media": 0.963,
+        "low": 0.938,
+        "high": 0.987,
+        "n": 240
+      },
+      "gana_sin_perfil": {
+        "media": 0.742,
+        "low": 0.686,
+        "high": 0.797,
+        "n": 240
+      },
+      "ventaja_partidas": {
+        "media": 0.221,
+        "low": 0.167,
+        "high": 0.275,
+        "n": 240
+      },
+      "ventaja_tantos": {
+        "media": 15.979,
+        "low": 14.352,
+        "high": 17.607,
+        "n": 240
+      }
+    },
+    "16.ª o más": {
+      "gana_con_perfil": {
+        "media": 0.958,
+        "low": 0.938,
+        "high": 0.979,
+        "n": 360
+      },
+      "gana_sin_perfil": {
+        "media": 0.783,
+        "low": 0.741,
+        "high": 0.826,
+        "n": 360
+      },
+      "ventaja_partidas": {
+        "media": 0.175,
+        "low": 0.13,
+        "high": 0.22,
+        "n": 360
+      },
+      "ventaja_tantos": {
+        "media": 14.658,
+        "low": 13.185,
+        "high": 16.132,
+        "n": 360
+      }
+    }
+  },
+  "sencillo": {
+    "1.ª partida": {
+      "gana_con_perfil": {
+        "media": 0.75,
+        "low": 0.573,
+        "high": 0.927,
+        "n": 24
+      },
+      "gana_sin_perfil": {
+        "media": 0.75,
+        "low": 0.573,
+        "high": 0.927,
+        "n": 24
+      },
+      "ventaja_partidas": {
+        "media": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "n": 24
+      },
+      "ventaja_tantos": {
+        "media": 0.125,
+        "low": -1.383,
+        "high": 1.633,
+        "n": 24
+      }
+    },
+    "2.ª a 5.ª": {
+      "gana_con_perfil": {
+        "media": 0.688,
+        "low": 0.594,
+        "high": 0.781,
+        "n": 96
+      },
+      "gana_sin_perfil": {
+        "media": 0.656,
+        "low": 0.561,
+        "high": 0.752,
+        "n": 96
+      },
+      "ventaja_partidas": {
+        "media": 0.031,
+        "low": -0.023,
+        "high": 0.085,
+        "n": 96
+      },
+      "ventaja_tantos": {
+        "media": -0.417,
+        "low": -1.833,
+        "high": 1.0,
+        "n": 96
+      }
+    },
+    "6.ª a 15.ª": {
+      "gana_con_perfil": {
+        "media": 0.642,
+        "low": 0.581,
+        "high": 0.702,
+        "n": 240
+      },
+      "gana_sin_perfil": {
+        "media": 0.646,
+        "low": 0.585,
+        "high": 0.706,
+        "n": 240
+      },
+      "ventaja_partidas": {
+        "media": -0.004,
+        "low": -0.04,
+        "high": 0.032,
+        "n": 240
+      },
+      "ventaja_tantos": {
+        "media": -0.271,
+        "low": -1.432,
+        "high": 0.89,
+        "n": 240
+      }
+    },
+    "16.ª o más": {
+      "gana_con_perfil": {
+        "media": 0.683,
+        "low": 0.635,
+        "high": 0.731,
+        "n": 360
+      },
+      "gana_sin_perfil": {
+        "media": 0.681,
+        "low": 0.632,
+        "high": 0.729,
+        "n": 360
+      },
+      "ventaja_partidas": {
+        "media": 0.003,
+        "low": -0.026,
+        "high": 0.031,
+        "n": 360
+      },
+      "ventaja_tantos": {
+        "media": -0.356,
+        "low": -1.254,
+        "high": 0.543,
+        "n": 360
+      }
+    }
+  }
+}

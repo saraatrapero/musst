@@ -419,3 +419,13 @@ def _inclined(beta: float) -> View:
 
 def _compose(first: View, then: View) -> View:
     return lambda d: then(first(d))
+
+
+class LearningMediumBot(MediumBot):
+    """El bot medio que aprende de cada persona: usa el perfil que la web guarda de ella
+    entre partidas (y lo que ve en la partida en curso) para interpretar sus envites y
+    prever si querrá. Medido en ``scripts/aprendizaje.py``: contra quien abandona casi
+    todo pasa de ganar el 78 % de las partidas al 96 %; contra quien no tiene un estilo
+    marcado, gana lo mismo que sin perfil."""
+
+    use_profiles = True

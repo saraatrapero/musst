@@ -140,3 +140,12 @@ def test_profiled_bot_reads_rivals_and_remembers() -> None:
     assert bot.decide(obs) in (AcceptAction(), RejectAction(), OrdagoAction())
     plain = medio(2)
     assert plain.profile_of(SeatId(1), obs) == PlayerProfile()  # sin perfiles por defecto
+
+
+def test_web_level_learns_from_each_player() -> None:
+    from mus_engine.bots.medium_bot import LearningMediumBot
+    from mus_web.rooms import BOT_LEVELS
+
+    assert BOT_LEVELS["medio"] is LearningMediumBot
+    assert LearningMediumBot.use_profiles
+    assert not MediumBot.use_profiles
