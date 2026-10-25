@@ -10,37 +10,55 @@
       "p": 0.4958,
       "low": 0.4794,
       "high": 0.5122,
-      "n": 3572
+      "n": 3572,
+      "tantos": 0.771,
+      "tantos_low": 0.534,
+      "tantos_high": 1.008
     },
     "con_mus": {
       "p": 0.5422,
       "low": 0.4663,
       "high": 0.6162,
-      "n": 166
+      "n": 166,
+      "tantos": 1.392,
+      "tantos_low": 0.098,
+      "tantos_high": 2.685
     },
     "sin_mus": {
       "p": 0.4935,
       "low": 0.4768,
       "high": 0.5103,
-      "n": 3406
+      "n": 3406,
+      "tantos": 0.741,
+      "tantos_low": 0.5,
+      "tantos_high": 0.981
     },
     "vio_sena": {
       "p": 0.0,
       "low": 0.0,
       "high": 0.0,
-      "n": 0
+      "n": 0,
+      "tantos": 0.0,
+      "tantos_low": 0.0,
+      "tantos_high": 0.0
     },
     "no_vio_sena": {
       "p": 0.4958,
       "low": 0.4794,
       "high": 0.5122,
-      "n": 3572
+      "n": 3572,
+      "tantos": 0.771,
+      "tantos_low": 0.534,
+      "tantos_high": 1.008
     },
     "le_pillaron": {
       "p": 0.0,
       "low": 0.0,
       "high": 0.0,
-      "n": 0
+      "n": 0,
+      "tantos": 0.0,
+      "tantos_low": 0.0,
+      "tantos_high": 0.0
     },
     "calibracion": {
       "0.0-0.1": {
@@ -116,37 +134,55 @@
       "p": 0.4916,
       "low": 0.4755,
       "high": 0.5077,
-      "n": 3686
+      "n": 3686,
+      "tantos": 0.85,
+      "tantos_low": 0.623,
+      "tantos_high": 1.077
     },
     "con_mus": {
       "p": 0.5196,
       "low": 0.4467,
       "high": 0.5916,
-      "n": 179
+      "n": 179,
+      "tantos": 0.754,
+      "tantos_low": -0.838,
+      "tantos_high": 2.347
     },
     "sin_mus": {
       "p": 0.4902,
       "low": 0.4736,
       "high": 0.5067,
-      "n": 3507
+      "n": 3507,
+      "tantos": 0.855,
+      "tantos_low": 0.63,
+      "tantos_high": 1.079
     },
     "vio_sena": {
       "p": 0.4914,
       "low": 0.4751,
       "high": 0.5077,
-      "n": 3610
+      "n": 3610,
+      "tantos": 0.849,
+      "tantos_low": 0.618,
+      "tantos_high": 1.079
     },
     "no_vio_sena": {
       "p": 0.5,
       "low": 0.3903,
       "high": 0.6097,
-      "n": 76
+      "n": 76,
+      "tantos": 0.895,
+      "tantos_low": -0.323,
+      "tantos_high": 2.113
     },
     "le_pillaron": {
       "p": 0.0,
       "low": 0.0,
       "high": 0.0,
-      "n": 0
+      "n": 0,
+      "tantos": 0.0,
+      "tantos_low": 0.0,
+      "tantos_high": 0.0
     },
     "calibracion": {
       "0.0-0.1": {
@@ -222,37 +258,55 @@
       "p": 0.5614,
       "low": 0.5338,
       "high": 0.5886,
-      "n": 1254
+      "n": 1254,
+      "tantos": 8.888,
+      "tantos_low": 7.771,
+      "tantos_high": 10.005
     },
     "con_mus": {
       "p": 0.6275,
       "low": 0.5486,
       "high": 0.7001,
-      "n": 153
+      "n": 153,
+      "tantos": 10.588,
+      "tantos_low": 7.45,
+      "tantos_high": 13.727
     },
     "sin_mus": {
       "p": 0.5522,
       "low": 0.5227,
       "high": 0.5814,
-      "n": 1101
+      "n": 1101,
+      "tantos": 8.652,
+      "tantos_low": 7.457,
+      "tantos_high": 9.847
     },
     "vio_sena": {
       "p": 0.0,
       "low": 0.0,
       "high": 0.0,
-      "n": 0
+      "n": 0,
+      "tantos": 0.0,
+      "tantos_low": 0.0,
+      "tantos_high": 0.0
     },
     "no_vio_sena": {
       "p": 0.5614,
       "low": 0.5338,
       "high": 0.5886,
-      "n": 1254
+      "n": 1254,
+      "tantos": 8.888,
+      "tantos_low": 7.771,
+      "tantos_high": 10.005
     },
     "le_pillaron": {
       "p": 0.0,
       "low": 0.0,
       "high": 0.0,
-      "n": 0
+      "n": 0,
+      "tantos": 0.0,
+      "tantos_low": 0.0,
+      "tantos_high": 0.0
     },
     "calibracion": {
       "0.0-0.1": {
@@ -328,37 +382,55 @@
       "p": 0.5816,
       "low": 0.5539,
       "high": 0.6088,
-      "n": 1238
+      "n": 1238,
+      "tantos": 9.892,
+      "tantos_low": 8.776,
+      "tantos_high": 11.008
     },
     "con_mus": {
       "p": 0.6447,
       "low": 0.5659,
       "high": 0.7164,
-      "n": 152
+      "n": 152,
+      "tantos": 9.803,
+      "tantos_low": 6.471,
+      "tantos_high": 13.134
     },
     "sin_mus": {
       "p": 0.5727,
       "low": 0.5431,
       "high": 0.6019,
-      "n": 1086
+      "n": 1086,
+      "tantos": 9.904,
+      "tantos_low": 8.72,
+      "tantos_high": 11.089
     },
     "vio_sena": {
       "p": 0.5725,
       "low": 0.5439,
       "high": 0.6007,
-      "n": 1165
+      "n": 1165,
+      "tantos": 9.31,
+      "tantos_low": 8.172,
+      "tantos_high": 10.448
     },
     "no_vio_sena": {
       "p": 0.726,
       "low": 0.6144,
       "high": 0.8151,
-      "n": 73
+      "n": 73,
+      "tantos": 19.178,
+      "tantos_low": 14.27,
+      "tantos_high": 24.087
     },
     "le_pillaron": {
       "p": 0.0,
       "low": 0.0,
       "high": 0.0,
-      "n": 0
+      "n": 0,
+      "tantos": 0.0,
+      "tantos_low": 0.0,
+      "tantos_high": 0.0
     },
     "calibracion": {
       "0.0-0.1": {
@@ -434,37 +506,55 @@
       "p": 0.578,
       "low": 0.5506,
       "high": 0.6048,
-      "n": 1270
+      "n": 1270,
+      "tantos": 8.541,
+      "tantos_low": 7.422,
+      "tantos_high": 9.66
     },
     "con_mus": {
       "p": 0.5676,
       "low": 0.4091,
       "high": 0.7133,
-      "n": 37
+      "n": 37,
+      "tantos": 10.216,
+      "tantos_low": 3.385,
+      "tantos_high": 17.048
     },
     "sin_mus": {
       "p": 0.5783,
       "low": 0.5505,
       "high": 0.6055,
-      "n": 1233
+      "n": 1233,
+      "tantos": 8.491,
+      "tantos_low": 7.356,
+      "tantos_high": 9.626
     },
     "vio_sena": {
       "p": 0.0,
       "low": 0.0,
       "high": 0.0,
-      "n": 0
+      "n": 0,
+      "tantos": 0.0,
+      "tantos_low": 0.0,
+      "tantos_high": 0.0
     },
     "no_vio_sena": {
       "p": 0.578,
       "low": 0.5506,
       "high": 0.6048,
-      "n": 1270
+      "n": 1270,
+      "tantos": 8.541,
+      "tantos_low": 7.422,
+      "tantos_high": 9.66
     },
     "le_pillaron": {
       "p": 0.0,
       "low": 0.0,
       "high": 0.0,
-      "n": 0
+      "n": 0,
+      "tantos": 0.0,
+      "tantos_low": 0.0,
+      "tantos_high": 0.0
     },
     "calibracion": {
       "0.0-0.1": {
@@ -540,37 +630,55 @@
       "p": 0.5689,
       "low": 0.5411,
       "high": 0.5963,
-      "n": 1234
+      "n": 1234,
+      "tantos": 8.436,
+      "tantos_low": 7.263,
+      "tantos_high": 9.609
     },
     "con_mus": {
       "p": 0.5172,
       "low": 0.3443,
       "high": 0.6861,
-      "n": 29
+      "n": 29,
+      "tantos": 6.897,
+      "tantos_low": -1.562,
+      "tantos_high": 15.356
     },
     "sin_mus": {
       "p": 0.5701,
       "low": 0.542,
       "high": 0.5978,
-      "n": 1205
+      "n": 1205,
+      "tantos": 8.473,
+      "tantos_low": 7.289,
+      "tantos_high": 9.657
     },
     "vio_sena": {
       "p": 0.5606,
       "low": 0.5318,
       "high": 0.5889,
-      "n": 1156
+      "n": 1156,
+      "tantos": 7.948,
+      "tantos_low": 6.765,
+      "tantos_high": 9.131
     },
     "no_vio_sena": {
       "p": 0.6923,
       "low": 0.5829,
       "high": 0.7837,
-      "n": 78
+      "n": 78,
+      "tantos": 15.667,
+      "tantos_low": 9.792,
+      "tantos_high": 21.541
     },
     "le_pillaron": {
       "p": 0.0,
       "low": 0.0,
       "high": 0.0,
-      "n": 0
+      "n": 0,
+      "tantos": 0.0,
+      "tantos_low": 0.0,
+      "tantos_high": 0.0
     },
     "calibracion": {
       "0.0-0.1": {
@@ -646,37 +754,55 @@
       "p": 0.4772,
       "low": 0.456,
       "high": 0.4984,
-      "n": 2127
+      "n": 2127,
+      "tantos": -0.055,
+      "tantos_low": -0.641,
+      "tantos_high": 0.532
     },
     "con_mus": {
       "p": 0.4434,
       "low": 0.3973,
       "high": 0.4905,
-      "n": 433
+      "n": 433,
+      "tantos": -1.363,
+      "tantos_low": -2.817,
+      "tantos_high": 0.092
     },
     "sin_mus": {
       "p": 0.4858,
       "low": 0.4621,
       "high": 0.5096,
-      "n": 1694
+      "n": 1694,
+      "tantos": 0.28,
+      "tantos_low": -0.355,
+      "tantos_high": 0.915
     },
     "vio_sena": {
       "p": 0.0,
       "low": 0.0,
       "high": 0.0,
-      "n": 0
+      "n": 0,
+      "tantos": 0.0,
+      "tantos_low": 0.0,
+      "tantos_high": 0.0
     },
     "no_vio_sena": {
       "p": 0.4772,
       "low": 0.456,
       "high": 0.4984,
-      "n": 2127
+      "n": 2127,
+      "tantos": -0.055,
+      "tantos_low": -0.641,
+      "tantos_high": 0.532
     },
     "le_pillaron": {
       "p": 0.0,
       "low": 0.0,
       "high": 0.0,
-      "n": 0
+      "n": 0,
+      "tantos": 0.0,
+      "tantos_low": 0.0,
+      "tantos_high": 0.0
     },
     "calibracion": {
       "0.0-0.1": {
@@ -752,37 +878,55 @@
       "p": 0.4696,
       "low": 0.4487,
       "high": 0.4906,
-      "n": 2172
+      "n": 2172,
+      "tantos": -0.279,
+      "tantos_low": -0.846,
+      "tantos_high": 0.288
     },
     "con_mus": {
       "p": 0.4654,
       "low": 0.4218,
       "high": 0.5096,
-      "n": 492
+      "n": 492,
+      "tantos": -0.555,
+      "tantos_low": -1.91,
+      "tantos_high": 0.8
     },
     "sin_mus": {
       "p": 0.4708,
       "low": 0.4471,
       "high": 0.4947,
-      "n": 1680
+      "n": 1680,
+      "tantos": -0.198,
+      "tantos_low": -0.816,
+      "tantos_high": 0.419
     },
     "vio_sena": {
       "p": 0.4719,
       "low": 0.4508,
       "high": 0.4931,
-      "n": 2134
+      "n": 2134,
+      "tantos": -0.254,
+      "tantos_low": -0.831,
+      "tantos_high": 0.323
     },
     "no_vio_sena": {
       "p": 0.3421,
       "low": 0.2121,
       "high": 0.5011,
-      "n": 38
+      "n": 38,
+      "tantos": -1.684,
+      "tantos_low": -3.516,
+      "tantos_high": 0.148
     },
     "le_pillaron": {
       "p": 0.0,
       "low": 0.0,
       "high": 0.0,
-      "n": 0
+      "n": 0,
+      "tantos": 0.0,
+      "tantos_low": 0.0,
+      "tantos_high": 0.0
     },
     "calibracion": {
       "0.0-0.1": {
