@@ -150,6 +150,6 @@ def test_seen_signals_change_the_odds() -> None:
     assert mate_duples > base + 0.1  # 0,31 → 0,49
     assert mate_blind < base
     assert rival_duples < base
-    # Una seña nunca anula del todo las manos que no cuadran (puede ser un farol).
+    # Una seña nunca anula del todo las manos que no cuadran (SIGNAL_DOUBT).
     d = distribution(LanceType.PARES, k.available, POLICY, signals=frozenset({Signal.CIEGO}))
     assert 0 < 1 - d.none < 0.5

@@ -2,7 +2,7 @@
 
     PYTHONPATH=src python scripts/medir_bots.py --partidas 300 --json resultados.json
 
-Juega cada enfrentamiento con y sin señas (reglas de la web: señas falsas permitidas y
+Juega cada enfrentamiento con y sin señas (reglas de la web: sólo señas verdaderas y
 recuento al final) y saca, para la pareja del primer bot:
 
 - P(ganar la partida) con su intervalo de confianza del 95 % (Wilson);
@@ -71,7 +71,7 @@ POLICY = RankingPolicy()
 def play(args: tuple[str, str, bool, int]) -> dict[str, Any]:
     """Una partida; la pareja de ``first`` juega en asientos pares o impares según la semilla."""
     first, second, signals, seed = args
-    config = GameConfig(signals_enabled=signals, false_signals=True, negadas_at_end=True)
+    config = GameConfig(signals_enabled=signals, negadas_at_end=True)
     side = seed % 2
     bots = [BOTS[first if s % 2 == side else second]() for s in ALL_SEATS]
     for seat, bot in enumerate(bots):

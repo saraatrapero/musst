@@ -115,7 +115,7 @@ def distribution(
     signals: frozenset[Signal] = frozenset(),
 ) -> Distribution:
     """Fuerzas posibles de una mano ajena. ``signals``: señas que se le han visto; las
-    manos que no las cumplen pesan :data:`SIGNAL_DOUBT` (puede ser un farol)."""
+    manos que no las cumplen pesan :data:`SIGNAL_DOUBT`."""
     weights: dict[Strength, float] = {}
     none = 0.0
     total = 0.0
@@ -160,8 +160,8 @@ def _beats(
 
 View = Callable[[Distribution], Distribution]
 
-# Peso de una mano que contradice una seña vista: no cero, porque una persona puede
-# farolear (regla de casa de la web); los bots sólo señan lo que tienen.
+# Peso de una mano que contradice una seña vista. Las señas son verdaderas (C.VIII-4),
+# pero no se anula del todo: con ``false_signals`` el motor admite faroles.
 SIGNAL_DOUBT = 0.1
 
 

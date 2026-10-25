@@ -166,13 +166,10 @@ class Room:
         free = [a for a in self.avatars if a.id not in taken] or list(self.avatars)
         self.rng.shuffle(free)
         chosen = self._chosen_avatars(taken)
-        # Reglas de casa pedidas por la usuaria: se puede farolear con las señas y todo
-        # se cuenta al final de la jugada en orden de lances (docs/web.md).
+        # Regla de casa pedida por la usuaria: todo se cuenta al final de la jugada en
+        # orden de lances (docs/web.md). Las señas, como en el reglamento: sólo verdaderas.
         config = GameConfig(
-            target_score=self.target,
-            signals_enabled=self.signals,
-            false_signals=True,
-            negadas_at_end=True,
+            target_score=self.target, signals_enabled=self.signals, negadas_at_end=True
         )
         bot_factory = bot_factory or BOT_LEVELS[self.level]
         known = {

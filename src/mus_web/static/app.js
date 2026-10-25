@@ -886,7 +886,7 @@ function signalsPanel(g) {
       h("span", {}, mateLooks ? `¡${g.names[mate]} te está mirando! Es el momento.` : `${g.names[mate]} no te mira ahora: espera a que te mire.`),
       rivalsLook.length > 0 && h("span", { class: "warn" }, `👀 Cuidado: te mira ${rivalsLook.join(" y ")}`)));
   if (!legal.length) box.append(h("div", { class: "muted" }, "Ahora no puedes hacer señas (se hacen después de cortar el mus)."));
-  else box.append(h("div", { class: "muted" }, "Puedes señar cualquier jugada, aunque no la tengas: un farol engaña a los rivales que te miren (ojo, tu compañero también se lo creerá)."));
+  else box.append(h("div", { class: "muted" }, "Sólo puedes señar lo que llevas: las señas falsas no están permitidas."));
   const row = h("div", { class: "sig-buttons" });
   for (const a of legal) row.append(h("button", { class: "small sig", onclick: () => send(a) }, h("b", {}, SIGNALS[a.signal] || a.signal), h("small", {}, SIGNAL_HELP[a.signal] || "")));
   box.append(row);

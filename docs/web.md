@@ -161,11 +161,11 @@ MUSST_TEST_DATABASE_URL=postgresql+psycopg://musst@127.0.0.1:5432/musst python -
 
 ## Reglas de casa en la web
 
-La web juega con dos opciones de `GameConfig` que el reglamento FEM no contempla y
-que pidió la usuaria (el motor, por defecto, sigue el reglamento):
+La web juega con una opción de `GameConfig` que pidió la usuaria (el motor, por
+defecto, sigue el reglamento):
 
-- `false_signals=True`: se pueden hacer señas falsas (farol). Los bots sólo señan lo
-  que tienen.
+- Las señas, como en el reglamento: sólo se puede señar lo que se lleva (no hay señas
+  falsas; `false_signals` existe en el motor pero la web no lo activa).
 - `negadas_at_end=True`: las negadas y los envites no queridos no se suman en el
   acto, sino en el recuento final en orden de lances (grande, chica, pares, juego).
   Gana la primera pareja que llega al tanteo en ese orden y siempre se ven las cartas
