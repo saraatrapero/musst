@@ -24,6 +24,7 @@ from mus_engine.cards.ranking import RankingPolicy
 from mus_engine.players.seating import ALL_SEATS, SeatId, distance_from_mano, partner, team_of
 from mus_engine.rules.evaluation import Strength
 from mus_engine.rules.lance import LanceType
+from mus_engine.rules.signals import Signal
 
 
 @dataclass(frozen=True, slots=True)
@@ -111,7 +112,10 @@ def distribution(
     policy: RankingPolicy,
     pares: bool | None = None,
     juego: bool | None = None,
+    signals: frozenset[Signal] = frozenset(),
 ) -> Distribution:
+    """Fuerzas posibles de una mano ajena. ``signals``: señas que se le han visto; las
+    manos que no las cumplen pesan :data:`SIGNAL_DOUBT` (puede ser un farol)."""
     weights: dict[Strength, float] = {}
     none = 0.0
     total = 0.0
@@ -120,9 +124,11 @@ def distribution(
             juego is not None and cls.has_juego != juego
         ):
             continue
-        weight = cls.weight(available)
+        weight: float = cls.weight(available)
         if not weight:
             continue
+        if not signals <= cls.signals:
+            weight *= SIGNAL_DOUBT
         total += weight
         strength = cls.strengths[lance]
         if strength is None:
@@ -154,6 +160,10 @@ def _beats(
 
 View = Callable[[Distribution], Distribution]
 
+# Peso de una mano que contradice una seña vista: no cero, porque una persona puede
+# farolear (regla de casa de la web); los bots sólo señan lo que tienen.
+SIGNAL_DOUBT = 0.1
+
 
 def team_equity(
     knowledge: Knowledge,
@@ -172,7 +182,14 @@ def team_equity(
     rivals = [s for s in ALL_SEATS if team_of(s) is not team_of(me)]
     mine = hand_class(knowledge.my_hand, policy).strengths[lance]
     dists = {
-        s: distribution(lance, knowledge.available, policy, knowledge.pares[s], knowledge.juego[s])
+        s: distribution(
+            lance,
+            knowledge.available,
+            policy,
+            knowledge.pares[s],
+            knowledge.juego[s],
+            knowledge.signals[s],
+        )
         for s in (mate, *rivals)
     }
     for seat, view in (views or {}).items():

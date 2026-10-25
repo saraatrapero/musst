@@ -22,6 +22,7 @@ from __future__ import annotations
 
 from collections import Counter
 from collections.abc import Callable, Mapping
+from dataclasses import replace
 from itertools import combinations, combinations_with_replacement
 from math import comb
 from typing import ClassVar
@@ -92,6 +93,9 @@ class MediumBot(SimpleBot):
     # contra el sencillo en ambos casos; algo peor contra un farolero): desactivado
     # hasta la Fase F. Los perfiles se siguen calculando y guardando.
     use_profiles: ClassVar[bool] = False
+    # Tener en cuenta las señas que ve (de su compañero y de los rivales que pilla):
+    # las manos que no cuadran con la seña pesan mucho menos (docs/ai.md, Fase G).
+    read_signals: ClassVar[bool] = True
 
     name = "medio"
     description = (
@@ -118,7 +122,10 @@ class MediumBot(SimpleBot):
         return self._bet(observation)
 
     def _knowledge(self, observation: Observation) -> Knowledge:
-        return CardCounter(self._policy).read(observation)
+        knowledge = CardCounter(self._policy).read(observation)
+        if self.read_signals:
+            return knowledge
+        return replace(knowledge, signals=(frozenset(),) * len(knowledge.signals))
 
     # --- Mus ---------------------------------------------------------------------------
 
