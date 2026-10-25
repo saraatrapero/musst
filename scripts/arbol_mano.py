@@ -1,6 +1,6 @@
 """Árbol de una jugada y detección de faroles: mide al bot medio con partidas simuladas.
 
-    PYTHONPATH=src python scripts/arbol_mano.py --partidas 500 --json docs/arbol_mano.json
+    PYTHONPATH=src python scripts/arbol_mano.py --json docs/arbol_mano.json
 
 1. **Árbol de la jugada** (bot medio y su compañero contra dos sencillos). Para cada
    jugada, desde el asiento del bot: ¿hay mus? Si no, ¿quién lo corta? Si lo hay,
@@ -254,6 +254,7 @@ def profiles_game(args: tuple[str, int]) -> bool:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--partidas-arbol", type=int, default=3000)
     parser.add_argument("--partidas", type=int, default=500)
     parser.add_argument("--series", type=int, default=24)
     parser.add_argument("--por-serie", type=int, default=30)
@@ -261,7 +262,7 @@ def main() -> None:
     args = parser.parse_args()
     out: dict[str, Any] = {}
     with Pool() as pool:
-        hands = [h for hs in pool.map(tree_game, range(args.partidas)) for h in hs]
+        hands = [h for hs in pool.map(tree_game, range(args.partidas_arbol)) for h in hs]
         out["arbol"] = tree_report(hands)
         print("árbol:", out["arbol"]["todas"]["jugadas"], "jugadas")
         for rival in ("farolero", "sencillo"):
