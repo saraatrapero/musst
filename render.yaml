@@ -9,6 +9,8 @@ services:
     envVars:
       - key: MUSST_SECURE
         value: "1"
+      - key: MUSST_ADMINS  # usuarios administradores, separados por comas
+        value: "sara"
       - key: MUSST_DATABASE_URL
         fromDatabase:
           name: musst-db

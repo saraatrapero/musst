@@ -187,3 +187,10 @@ defecto, sigue el reglamento):
   voz: «Mus», «No hay mus», «Dame dos», «Paso», «Envido», «Quiero», «No quiero»,
   «¡Órdago!», y «Pares sí/no» y «Juego sí/no» en orden desde la mano. Los bots
   piensan 1,3 s por jugada para que dé tiempo a oírlo.
+
+## Administración
+
+Los usuarios de `MUSST_ADMINS` (en Render, `render.yaml`: `sara`) ven en el lobby un
+panel con el número de usuarios y partidas, cómo les va a los bots contra personas
+(porcentaje con intervalo de Wilson del 95 %) y un formulario para poner una
+contraseña nueva a quien la olvide (cierra sus sesiones abiertas).
