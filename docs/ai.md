@@ -218,3 +218,17 @@ medios, uno por jugada; uno de cada cinco «desesperado» con cualquier mano). A
 
 Resultado: de 140 órdagos en 140 jugadas a 15 en 152 (partidas entre bots medios), y
 el bot gana lo mismo: 71 % contra el sencillo (300 partidas).
+
+### Árbol de la mano y detección de faroles (`scripts/arbol_mano.py`)
+
+Resultados en `docs/arbol_mano.json` (bot medio contra sencillo, 3.000 partidas,
+21.749 manos):
+
+- Si corta el mus su pareja (27 % de las manos) gana el 80 % de las manos y +4,8
+  tantos; si cortan los rivales (68 %), el 37 % y −0,8. Hay mus en el 5 % de las
+  manos: gana el 57 %, mejor cuantas menos cartas pide.
+- Perfil contra un farolero (24 series de 30 partidas): la P(farol | envida) estimada
+  pasa del 5 % sin datos al 27,5 % tras 15 partidas, con un 26,2 % real; contra el
+  sencillo, que no farolea, baja al 0,3 %.
+- Usar ese perfil al decidir no cambia todavía el resultado: 63,6 % de victorias
+  contra faroleros con y sin perfiles (250 partidas cada uno, tras 20 de aprendizaje).

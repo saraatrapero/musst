@@ -1,0 +1,831 @@
+{
+  "arbol": {
+    "todas": {
+      "jugadas": 21749,
+      "proporcion": 1.0,
+      "gana_jugada": {
+        "p": 0.4971,
+        "low": 0.4905,
+        "high": 0.5038,
+        "n": 21749
+      },
+      "tantos": 0.85,
+      "tantos_low": 0.75,
+      "tantos_high": 0.94,
+      "lances": {
+        "grande": {
+          "p": 0.494,
+          "low": 0.4873,
+          "high": 0.5007,
+          "n": 21526
+        },
+        "chica": {
+          "p": 0.4949,
+          "low": 0.4882,
+          "high": 0.5017,
+          "n": 21027
+        },
+        "pares": {
+          "p": 0.4959,
+          "low": 0.489,
+          "high": 0.5028,
+          "n": 20018
+        },
+        "juego": {
+          "p": 0.49,
+          "low": 0.4822,
+          "high": 0.4979,
+          "n": 15725
+        },
+        "punto": {
+          "p": 0.4573,
+          "low": 0.4422,
+          "high": 0.4725,
+          "n": 4144
+        }
+      }
+    },
+    "no_hay_mus": {
+      "jugadas": 20698,
+      "proporcion": 0.9517,
+      "gana_jugada": {
+        "p": 0.4936,
+        "low": 0.4868,
+        "high": 0.5004,
+        "n": 20698
+      },
+      "tantos": 0.8,
+      "tantos_low": 0.7,
+      "tantos_high": 0.89,
+      "lances": {
+        "grande": {
+          "p": 0.4907,
+          "low": 0.4838,
+          "high": 0.4975,
+          "n": 20493
+        },
+        "chica": {
+          "p": 0.4981,
+          "low": 0.4911,
+          "high": 0.505,
+          "n": 20028
+        },
+        "pares": {
+          "p": 0.4961,
+          "low": 0.489,
+          "high": 0.5032,
+          "n": 19036
+        },
+        "juego": {
+          "p": 0.4816,
+          "low": 0.4735,
+          "high": 0.4896,
+          "n": 14795
+        },
+        "punto": {
+          "p": 0.4568,
+          "low": 0.4417,
+          "high": 0.472,
+          "n": 4135
+        }
+      }
+    },
+    "hay_mus": {
+      "jugadas": 1051,
+      "proporcion": 0.0483,
+      "gana_jugada": {
+        "p": 0.5671,
+        "low": 0.5369,
+        "high": 0.5967,
+        "n": 1051
+      },
+      "tantos": 1.83,
+      "tantos_low": 1.23,
+      "tantos_high": 2.42,
+      "lances": {
+        "grande": {
+          "p": 0.5605,
+          "low": 0.5301,
+          "high": 0.5905,
+          "n": 1033
+        },
+        "chica": {
+          "p": 0.4324,
+          "low": 0.402,
+          "high": 0.4634,
+          "n": 999
+        },
+        "pares": {
+          "p": 0.4929,
+          "low": 0.4617,
+          "high": 0.5241,
+          "n": 982
+        },
+        "juego": {
+          "p": 0.6247,
+          "low": 0.5932,
+          "high": 0.6553,
+          "n": 930
+        },
+        "punto": {
+          "p": 0.6667,
+          "low": 0.3542,
+          "high": 0.8794,
+          "n": 9
+        }
+      }
+    },
+    "ramas": {
+      "mus_pide_1/1_ronda": {
+        "jugadas": 77,
+        "proporcion": 0.0035,
+        "gana_jugada": {
+          "p": 0.6234,
+          "low": 0.5117,
+          "high": 0.7233,
+          "n": 77
+        },
+        "tantos": 2.77,
+        "tantos_low": 0.71,
+        "tantos_high": 4.82,
+        "lances": {
+          "grande": {
+            "p": 0.52,
+            "low": 0.4087,
+            "high": 0.6293,
+            "n": 75
+          },
+          "chica": {
+            "p": 0.3836,
+            "low": 0.2805,
+            "high": 0.4983,
+            "n": 73
+          },
+          "pares": {
+            "p": 0.5833,
+            "low": 0.4681,
+            "high": 0.6901,
+            "n": 72
+          },
+          "juego": {
+            "p": 0.5714,
+            "low": 0.4548,
+            "high": 0.6806,
+            "n": 70
+          }
+        }
+      },
+      "mus_pide_1/2_o_mas_rondas": {
+        "jugadas": 4,
+        "proporcion": 0.0002,
+        "gana_jugada": {
+          "p": 0.25,
+          "low": 0.0456,
+          "high": 0.6994,
+          "n": 4
+        },
+        "tantos": -4.5,
+        "tantos_low": -12.28,
+        "tantos_high": 3.28,
+        "lances": {
+          "grande": {
+            "p": 0.6667,
+            "low": 0.2077,
+            "high": 0.9385,
+            "n": 3
+          },
+          "chica": {
+            "p": 1.0,
+            "low": 0.4385,
+            "high": 1.0,
+            "n": 3
+          },
+          "pares": {
+            "p": 0.3333,
+            "low": 0.0615,
+            "high": 0.7923,
+            "n": 3
+          },
+          "juego": {
+            "p": 0.3333,
+            "low": 0.0615,
+            "high": 0.7923,
+            "n": 3
+          }
+        }
+      },
+      "mus_pide_1/todas": {
+        "jugadas": 81,
+        "proporcion": 0.0037,
+        "gana_jugada": {
+          "p": 0.6049,
+          "low": 0.4961,
+          "high": 0.7043,
+          "n": 81
+        },
+        "tantos": 2.41,
+        "tantos_low": 0.39,
+        "tantos_high": 4.42,
+        "lances": {
+          "grande": {
+            "p": 0.5256,
+            "low": 0.4162,
+            "high": 0.6326,
+            "n": 78
+          },
+          "chica": {
+            "p": 0.4079,
+            "low": 0.3044,
+            "high": 0.5202,
+            "n": 76
+          },
+          "pares": {
+            "p": 0.5733,
+            "low": 0.4605,
+            "high": 0.679,
+            "n": 75
+          },
+          "juego": {
+            "p": 0.5616,
+            "low": 0.4476,
+            "high": 0.6695,
+            "n": 73
+          }
+        }
+      },
+      "mus_pide_2/1_ronda": {
+        "jugadas": 467,
+        "proporcion": 0.0215,
+        "gana_jugada": {
+          "p": 0.5803,
+          "low": 0.5351,
+          "high": 0.6242,
+          "n": 467
+        },
+        "tantos": 1.95,
+        "tantos_low": 1.02,
+        "tantos_high": 2.89,
+        "lances": {
+          "grande": {
+            "p": 0.5884,
+            "low": 0.543,
+            "high": 0.6322,
+            "n": 464
+          },
+          "chica": {
+            "p": 0.3778,
+            "low": 0.3339,
+            "high": 0.4239,
+            "n": 442
+          },
+          "pares": {
+            "p": 0.4942,
+            "low": 0.4474,
+            "high": 0.5412,
+            "n": 433
+          },
+          "juego": {
+            "p": 0.6707,
+            "low": 0.624,
+            "high": 0.7143,
+            "n": 413
+          },
+          "punto": {
+            "p": 0.0,
+            "low": 0.0,
+            "high": 0.7935,
+            "n": 1
+          }
+        }
+      },
+      "mus_pide_2/2_o_mas_rondas": {
+        "jugadas": 2,
+        "proporcion": 0.0001,
+        "gana_jugada": {
+          "p": 1.0,
+          "low": 0.3424,
+          "high": 1.0,
+          "n": 2
+        },
+        "tantos": 1.0,
+        "tantos_low": 1.0,
+        "tantos_high": 1.0,
+        "lances": {
+          "grande": {
+            "p": 0.0,
+            "low": 0.0,
+            "high": 0.6576,
+            "n": 2
+          },
+          "chica": {
+            "p": 1.0,
+            "low": 0.3424,
+            "high": 1.0,
+            "n": 2
+          },
+          "pares": {
+            "p": 0.0,
+            "low": 0.0,
+            "high": 0.6576,
+            "n": 2
+          },
+          "juego": {
+            "p": 1.0,
+            "low": 0.3424,
+            "high": 1.0,
+            "n": 2
+          }
+        }
+      },
+      "mus_pide_2/todas": {
+        "jugadas": 469,
+        "proporcion": 0.0216,
+        "gana_jugada": {
+          "p": 0.5821,
+          "low": 0.537,
+          "high": 0.6259,
+          "n": 469
+        },
+        "tantos": 1.95,
+        "tantos_low": 1.02,
+        "tantos_high": 2.88,
+        "lances": {
+          "grande": {
+            "p": 0.5858,
+            "low": 0.5406,
+            "high": 0.6297,
+            "n": 466
+          },
+          "chica": {
+            "p": 0.3806,
+            "low": 0.3367,
+            "high": 0.4266,
+            "n": 444
+          },
+          "pares": {
+            "p": 0.492,
+            "low": 0.4452,
+            "high": 0.5388,
+            "n": 435
+          },
+          "juego": {
+            "p": 0.6723,
+            "low": 0.6257,
+            "high": 0.7157,
+            "n": 415
+          },
+          "punto": {
+            "p": 0.0,
+            "low": 0.0,
+            "high": 0.7935,
+            "n": 1
+          }
+        }
+      },
+      "mus_pide_3/1_ronda": {
+        "jugadas": 424,
+        "proporcion": 0.0195,
+        "gana_jugada": {
+          "p": 0.5425,
+          "low": 0.4949,
+          "high": 0.5893,
+          "n": 424
+        },
+        "tantos": 1.66,
+        "tantos_low": 0.72,
+        "tantos_high": 2.6,
+        "lances": {
+          "grande": {
+            "p": 0.5494,
+            "low": 0.5013,
+            "high": 0.5966,
+            "n": 415
+          },
+          "chica": {
+            "p": 0.4914,
+            "low": 0.4431,
+            "high": 0.5398,
+            "n": 407
+          },
+          "pares": {
+            "p": 0.4825,
+            "low": 0.4339,
+            "high": 0.5314,
+            "n": 400
+          },
+          "juego": {
+            "p": 0.5749,
+            "low": 0.5243,
+            "high": 0.624,
+            "n": 374
+          },
+          "punto": {
+            "p": 0.75,
+            "low": 0.4093,
+            "high": 0.9285,
+            "n": 8
+          }
+        }
+      },
+      "mus_pide_3/2_o_mas_rondas": {
+        "jugadas": 2,
+        "proporcion": 0.0001,
+        "gana_jugada": {
+          "p": 0.5,
+          "low": 0.0945,
+          "high": 0.9055,
+          "n": 2
+        },
+        "tantos": 1.0,
+        "tantos_low": -4.88,
+        "tantos_high": 6.88,
+        "lances": {
+          "grande": {
+            "p": 0.5,
+            "low": 0.0945,
+            "high": 0.9055,
+            "n": 2
+          },
+          "chica": {
+            "p": 0.0,
+            "low": 0.0,
+            "high": 0.6576,
+            "n": 2
+          },
+          "pares": {
+            "p": 0.0,
+            "low": 0.0,
+            "high": 0.6576,
+            "n": 2
+          },
+          "juego": {
+            "p": 1.0,
+            "low": 0.3424,
+            "high": 1.0,
+            "n": 2
+          }
+        }
+      },
+      "mus_pide_3/todas": {
+        "jugadas": 426,
+        "proporcion": 0.0196,
+        "gana_jugada": {
+          "p": 0.5423,
+          "low": 0.4948,
+          "high": 0.589,
+          "n": 426
+        },
+        "tantos": 1.66,
+        "tantos_low": 0.72,
+        "tantos_high": 2.59,
+        "lances": {
+          "grande": {
+            "p": 0.5492,
+            "low": 0.5012,
+            "high": 0.5963,
+            "n": 417
+          },
+          "chica": {
+            "p": 0.489,
+            "low": 0.4409,
+            "high": 0.5373,
+            "n": 409
+          },
+          "pares": {
+            "p": 0.4801,
+            "low": 0.4317,
+            "high": 0.5289,
+            "n": 402
+          },
+          "juego": {
+            "p": 0.5771,
+            "low": 0.5267,
+            "high": 0.626,
+            "n": 376
+          },
+          "punto": {
+            "p": 0.75,
+            "low": 0.4093,
+            "high": 0.9285,
+            "n": 8
+          }
+        }
+      },
+      "mus_pide_4/1_ronda": {
+        "jugadas": 75,
+        "proporcion": 0.0034,
+        "gana_jugada": {
+          "p": 0.5733,
+          "low": 0.4605,
+          "high": 0.679,
+          "n": 75
+        },
+        "tantos": 1.39,
+        "tantos_low": -0.28,
+        "tantos_high": 3.06,
+        "lances": {
+          "grande": {
+            "p": 0.5,
+            "low": 0.3875,
+            "high": 0.6125,
+            "n": 72
+          },
+          "chica": {
+            "p": 0.4571,
+            "low": 0.3457,
+            "high": 0.573,
+            "n": 70
+          },
+          "pares": {
+            "p": 0.4857,
+            "low": 0.3725,
+            "high": 0.6005,
+            "n": 70
+          },
+          "juego": {
+            "p": 0.6667,
+            "low": 0.5466,
+            "high": 0.7684,
+            "n": 66
+          }
+        }
+      },
+      "mus_pide_4/todas": {
+        "jugadas": 75,
+        "proporcion": 0.0034,
+        "gana_jugada": {
+          "p": 0.5733,
+          "low": 0.4605,
+          "high": 0.679,
+          "n": 75
+        },
+        "tantos": 1.39,
+        "tantos_low": -0.28,
+        "tantos_high": 3.06,
+        "lances": {
+          "grande": {
+            "p": 0.5,
+            "low": 0.3875,
+            "high": 0.6125,
+            "n": 72
+          },
+          "chica": {
+            "p": 0.4571,
+            "low": 0.3457,
+            "high": 0.573,
+            "n": 70
+          },
+          "pares": {
+            "p": 0.4857,
+            "low": 0.3725,
+            "high": 0.6005,
+            "n": 70
+          },
+          "juego": {
+            "p": 0.6667,
+            "low": 0.5466,
+            "high": 0.7684,
+            "n": 66
+          }
+        }
+      },
+      "no_hay_mus/corta_ellos": {
+        "jugadas": 14893,
+        "proporcion": 0.6848,
+        "gana_jugada": {
+          "p": 0.3743,
+          "low": 0.3666,
+          "high": 0.3821,
+          "n": 14893
+        },
+        "tantos": -0.77,
+        "tantos_low": -0.87,
+        "tantos_high": -0.67,
+        "lances": {
+          "grande": {
+            "p": 0.3878,
+            "low": 0.38,
+            "high": 0.3957,
+            "n": 14760
+          },
+          "chica": {
+            "p": 0.5304,
+            "low": 0.5223,
+            "high": 0.5385,
+            "n": 14485
+          },
+          "pares": {
+            "p": 0.3942,
+            "low": 0.3861,
+            "high": 0.4024,
+            "n": 13725
+          },
+          "juego": {
+            "p": 0.3431,
+            "low": 0.3339,
+            "high": 0.3524,
+            "n": 10142
+          },
+          "punto": {
+            "p": 0.429,
+            "low": 0.4129,
+            "high": 0.4452,
+            "n": 3606
+          }
+        }
+      },
+      "no_hay_mus/corta_nosotros": {
+        "jugadas": 5805,
+        "proporcion": 0.2669,
+        "gana_jugada": {
+          "p": 0.7995,
+          "low": 0.789,
+          "high": 0.8096,
+          "n": 5805
+        },
+        "tantos": 4.81,
+        "tantos_low": 4.62,
+        "tantos_high": 4.99,
+        "lances": {
+          "grande": {
+            "p": 0.7555,
+            "low": 0.7442,
+            "high": 0.7664,
+            "n": 5733
+          },
+          "chica": {
+            "p": 0.4135,
+            "low": 0.4006,
+            "high": 0.4265,
+            "n": 5543
+          },
+          "pares": {
+            "p": 0.7592,
+            "low": 0.7475,
+            "high": 0.7705,
+            "n": 5311
+          },
+          "juego": {
+            "p": 0.7834,
+            "low": 0.7713,
+            "high": 0.795,
+            "n": 4653
+          },
+          "punto": {
+            "p": 0.6465,
+            "low": 0.6048,
+            "high": 0.6861,
+            "n": 529
+          }
+        }
+      },
+      "no_hay_mus/todas": {
+        "jugadas": 20698,
+        "proporcion": 0.9517,
+        "gana_jugada": {
+          "p": 0.4936,
+          "low": 0.4868,
+          "high": 0.5004,
+          "n": 20698
+        },
+        "tantos": 0.8,
+        "tantos_low": 0.7,
+        "tantos_high": 0.89,
+        "lances": {
+          "grande": {
+            "p": 0.4907,
+            "low": 0.4838,
+            "high": 0.4975,
+            "n": 20493
+          },
+          "chica": {
+            "p": 0.4981,
+            "low": 0.4911,
+            "high": 0.505,
+            "n": 20028
+          },
+          "pares": {
+            "p": 0.4961,
+            "low": 0.489,
+            "high": 0.5032,
+            "n": 19036
+          },
+          "juego": {
+            "p": 0.4816,
+            "low": 0.4735,
+            "high": 0.4896,
+            "n": 14795
+          },
+          "punto": {
+            "p": 0.4568,
+            "low": 0.4417,
+            "high": 0.472,
+            "n": 4135
+          }
+        }
+      }
+    }
+  },
+  "experiencia_farolero": {
+    "0 partidas": {
+      "envites": 272,
+      "farol_estimado": 0.0458,
+      "farol_real": {
+        "p": 0.2868,
+        "low": 0.2363,
+        "high": 0.3432,
+        "n": 272
+      }
+    },
+    "1-4": {
+      "envites": 975,
+      "farol_estimado": 0.2013,
+      "farol_real": {
+        "p": 0.2882,
+        "low": 0.2606,
+        "high": 0.3174,
+        "n": 975
+      }
+    },
+    "5-14": {
+      "envites": 2327,
+      "farol_estimado": 0.2567,
+      "farol_real": {
+        "p": 0.2836,
+        "low": 0.2657,
+        "high": 0.3023,
+        "n": 2327
+      }
+    },
+    "15 o más": {
+      "envites": 3462,
+      "farol_estimado": 0.2749,
+      "farol_real": {
+        "p": 0.2617,
+        "low": 0.2473,
+        "high": 0.2766,
+        "n": 3462
+      }
+    }
+  },
+  "experiencia_sencillo": {
+    "0 partidas": {
+      "envites": 45,
+      "farol_estimado": 0.0458,
+      "farol_real": {
+        "p": 0.0,
+        "low": 0.0,
+        "high": 0.0787,
+        "n": 45
+      }
+    },
+    "1-4": {
+      "envites": 177,
+      "farol_estimado": 0.0236,
+      "farol_real": {
+        "p": 0.0,
+        "low": 0.0,
+        "high": 0.0212,
+        "n": 177
+      }
+    },
+    "5-14": {
+      "envites": 399,
+      "farol_estimado": 0.0067,
+      "farol_real": {
+        "p": 0.0,
+        "low": 0.0,
+        "high": 0.0095,
+        "n": 399
+      }
+    },
+    "15 o más": {
+      "envites": 564,
+      "farol_estimado": 0.0026,
+      "farol_real": {
+        "p": 0.0,
+        "low": 0.0,
+        "high": 0.0068,
+        "n": 564
+      }
+    }
+  },
+  "contra_farolero_sin_perfiles": {
+    "p": 0.636,
+    "low": 0.5747,
+    "high": 0.6932,
+    "n": 250
+  },
+  "contra_farolero_con_perfiles": {
+    "p": 0.636,
+    "low": 0.5747,
+    "high": 0.6932,
+    "n": 250
+  },
+  "tramos": [
+    "mala",
+    "regular",
+    "buena",
+    "muy buena"
+  ]
+}
