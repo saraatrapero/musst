@@ -326,3 +326,4 @@ button.small { font-size: .85rem; padding: 6px 10px; }
 .pcard button { background: #f6c453; color: #2b2118; border-color: #c8963e; font-weight: 700; }
 .round .rtag { color: #f3e7d3; }
 .round.locked .rtag { background: #8a7d70; color: #fff; }
+.banner.notice { background: #183a26; border: 1px solid #3fae6a; color: #e6f6ec; font-weight: 600; }
