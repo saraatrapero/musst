@@ -58,7 +58,24 @@ function singCalls(data) {
     // Pares y juego se cantan en orden, empezando por la mano.
     if (e.type === "ParesDeclared" || e.type === "JuegoDeclared") calls = [0, 1, 2, 3].map((k) => calls[(mano + k) % 4]);
     for (const [seat, text] of calls) speak(text, data.room.seats[seat] && data.room.seats[seat].avatar.id);
+    partnerAnswered(e, data);
   }
+}
+
+// En el Mus basta con que conteste uno de la pareja: si tu compañero quiere (o sube)
+// antes que tú, a ti ya no te pregunta. Se avisa para que se entienda.
+const PARTNER_SAYS = {
+  BetAccepted: "ha dicho «Quiero» por la pareja: en el Mus basta con que conteste uno, así que a ti ya no te toca.",
+  OrdagoAccepted: "ha querido el órdago por la pareja.",
+  BetRaised: "ha subido el envite por la pareja.",
+  BetRejected: "no quiere; ahora decides tú.",
+};
+function partnerAnswered(e, data) {
+  const g = data.game, mate = (g.seat + 2) % 4;
+  if (e.data.seat !== mate || !PARTNER_SAYS[e.type]) return;
+  if (e.type === "BetRejected" && !g.to_act.includes(g.seat)) return;
+  state.notice = { text: `${g.names[mate]} ${PARTNER_SAYS[e.type]}`, until: Date.now() + 6000 };
+  setTimeout(() => render(), 6100);
 }
 
 // iPhone/iPad sólo dejan hablar después de un toque: se «despierta» la voz con el primero.
@@ -684,6 +701,14 @@ function infoParts(cards) {
 }
 
 // Explicación de la jugada que acaba de terminar, lance a lance. Lo último: repartir.
+const HAND_END_PAUSE = 2500; // ms
+
+// Durante la pausa, el centro de la mesa dice «Jugada terminada» en vez del resumen.
+function summaryWaiting(g, room) {
+  const node = handSummary(g, room);
+  return node && node.classList.contains("ending") ? node : null;
+}
+
 function handSummary(g, room) {
   const over = g.phase === "game_over";
   const hand = over ? g.hand_number : g.hand_number - 1;
@@ -692,6 +717,15 @@ function handSummary(g, room) {
   const evs = g.events.filter((e) => e.hand === hand);
   const points = evs.filter((e) => e.type === "PointsAwarded");
   if (!points.length) return null;
+  // Al acabar la jugada, una pausa antes del resumen: que terminen de hablar y se vea
+  // que ha acabado (si no llevas pares ni juego, el resto se resuelve en un momento).
+  if (!state.handEnd || state.handEnd.hand !== hand) state.handEnd = { hand, at: Date.now() };
+  const waited = Date.now() - state.handEnd.at;
+  const talking = "speechSynthesis" in window && speechSynthesis.speaking;
+  if (waited < HAND_END_PAUSE || (talking && waited < 15000)) {
+    if (!state.summaryTimer) state.summaryTimer = setTimeout(() => { state.summaryTimer = null; render(); }, 500);
+    return h("div", { class: "dealpanel ending" }, h("b", {}, "Jugada terminada"), h("p", { class: "muted" }, "Contando los tantos…"));
+  }
   const reveal = evs.find((e) => e.type === "HandsRevealed");
   const hands = reveal ? reveal.data.hands : null;
   const mineTeam = g.seat % 2 ? "B" : "A";
@@ -1010,7 +1044,7 @@ function tableScreen() {
   });
   const mineTeam = me % 2;
   const center = h("div", { class: "center" },
-    room.awaiting_deal && !state.dealing && !handSummary(g, room) ? dealPanel(g) : lanceBoard(g),
+    room.awaiting_deal && !state.dealing ? (summaryWaiting(g, room) || (!handSummary(g, room) && dealPanel(g)) || lanceBoard(g)) : lanceBoard(g),
     g.signals_seen.length > 0 && h("div", { class: "signals-seen" }, "🤫 Seña vista: " + g.signals_seen.map((x) => `${g.names[x.sender]} → ${SIGNALS[x.signal]} (${SIGNAL_HELP[x.signal] || ""})`).join(", ")),
     g.winner && h("h2", {}, g.winner === (mineTeam ? "B" : "A") ? "🏆 ¡Habéis ganado!" : "Habéis perdido"),
     g.winner && (room.tournament_round
@@ -1026,13 +1060,14 @@ function tableScreen() {
   mount(
     header,
     !dealing && turnBanner(g),
+    state.notice && Date.now() < state.notice.until && h("div", { class: "banner notice" }, `🤝 ${state.notice.text}`),
     linkStatus(),
     h("div", { class: "felt" }, h("div", { class: "table" }, seats, center)),
     !dealing && actionBar(g),
     h("p", { class: "error", id: "table-error" }),
     h("details", { class: "panel history" }, h("summary", {}, "📜 Lo que ha pasado"), log,
       h("label", { class: "check" }, h("input", { type: "checkbox", checked: state.quiet, onchange: (ev) => { state.quiet = ev.target.checked; } }), "Silenciar frases")),
-    handSummary(g, room));
+    !summaryWaiting(g, room) && handSummary(g, room));
   log.scrollTop = log.scrollHeight;
 }
 

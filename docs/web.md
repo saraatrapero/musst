@@ -194,3 +194,7 @@ Los usuarios de `MUSST_ADMINS` (en Render, `render.yaml`: `sara`) ven en el lobb
 panel con el número de usuarios y partidas, cómo les va a los bots contra personas
 (porcentaje con intervalo de Wilson del 95 %) y un formulario para poner una
 contraseña nueva a quien la olvide (cierra sus sesiones abiertas).
+- Al acabar la jugada, «Jugada terminada» al menos 2,5 s (y hasta que terminen de
+  hablar) antes del resumen.
+- Si tu compañero contesta un envite antes que tú, un aviso lo explica: con que
+  quiera uno de la pareja basta, así que a ti ya no te pregunta.
