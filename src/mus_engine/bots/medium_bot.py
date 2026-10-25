@@ -59,6 +59,11 @@ from mus_engine.rules.lances import jugada_points
 
 # Quien ya ha envidado tiene buena mano: casi siempre quiere si le subo.
 PROPOSER_ACCEPTS_RAISE = 0.85
+# Si ya hubo revoque (guerra de subidas), quien envidó no se va: subir otra vez sólo se
+# hace como jugada de valor, creyendo ganar el lance con mucha seguridad. Sin esto, con
+# un bote grande el 15 % de «no quiero» pagaba subir con cualquier cosa y dos bots se
+# revocaban sin fin (llegaban a 30 o más piedras con manos malas).
+RERAISE_MIN_WIN = 0.8
 PROPOSER_ACCEPTS_ORDAGO = 0.5
 RIVAL_JUGADA = {LanceType.PARES: 2, LanceType.JUEGO: 2}  # valor medio de su jugada
 BIG_BET_EQUITY = 0.8  # con más de esto, se envida más fuerte
@@ -210,7 +215,8 @@ class MediumBot(SimpleBot):
                 options.append((values.showdown(bet.pending, values.equity()), AcceptAction()))
                 if legal.raise_ is not None and bet.pending < values.my_missing:
                     amount = legal.raise_.minimum
-                    options.append((values.raise_(bet, amount), RaiseAction(amount)))
+                    if not bet.accepted or values.reraise_win(bet) >= RERAISE_MIN_WIN:
+                        options.append((values.raise_(bet, amount), RaiseAction(amount)))
                 if values.ordago_is_sound(values.counter_ordago_win(bet)):
                     options.append((values.counter_ordago(bet), OrdagoAction()))
         choices = [(v, a) for v, a in options if legal.contains(a)]
@@ -365,11 +371,19 @@ class _Values:
         fold, p = self._team_response(ordago=True)
         return fold * self._uncontested(1) + (1 - fold) * p
 
+    def reraise_win(self, bet: PublicBetView) -> float:
+        """P(ganar el lance) si subo otra vez en una guerra de subidas (y me quieren)."""
+        assert bet.proposer is not None
+        return self._proposer_response(bet.proposer, PROPOSER_ACCEPTS_RAISE)[1]
+
     def raise_(self, bet: PublicBetView, amount: int) -> float:
         assert bet.proposer is not None
         # Quien ha envidado de farol no aguanta un revoque: con su perfil, la parte de
-        # sus envites que son faroles se va (y sólo me llevo lo envidado).
+        # sus envites que son faroles se va (y sólo me llevo lo envidado). Si ya subió
+        # una vez, no se va.
         accept = min(PROPOSER_ACCEPTS_RAISE, 1.0 - self.profiles[bet.proposer].bluff_share())
+        if bet.accepted:
+            accept = 1.0
         fold, p = self._proposer_response(bet.proposer, accept)
         return fold * self._uncontested(bet.pending) + (1 - fold) * self.showdown(
             bet.pending + amount, p

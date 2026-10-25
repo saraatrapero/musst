@@ -257,3 +257,13 @@ Contra el farolero el bot ya detecta bien los faroles (estimación del 27,5 % fr
 un 26,2 % real), pero aún no lo convierte en más victorias: las diferencias caben en
 el ruido. Se probó no revocar los envites de quien farolea, y no bastó. Queda
 pendiente explotar mejor a los faroleros (querer más a menudo con manos medianas).
+
+### Sin guerras de revoques (petición de la usuaria)
+
+El bot daba por hecho que quien envidó se iba un 15 % de las veces ante cada subida,
+por muchas subidas que llevaran. Con un bote grande, ese 15 % «pagaba» subir con
+cualquier mano, y dos bots se revocaban sin fin (hasta 38 piedras a la chica sin nada).
+Ahora, si ya hubo un revoque, quien envidó no se va, y el bot sólo vuelve a subir si
+cree ganar el lance con un 80 % o más (`RERAISE_MIN_WIN`). En 30 partidas de cuatro
+bots medios ningún envite pasa ya de 10, y contra el sencillo gana el 68,2 % de 500
+partidas (antes 64,8 %). Test: `test_no_endless_raise_wars`.
