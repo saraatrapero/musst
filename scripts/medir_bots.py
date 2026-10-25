@@ -6,8 +6,8 @@ Juega cada enfrentamiento con y sin señas (reglas de la web: señas falsas perm
 recuento al final) y saca, para la pareja del primer bot:
 
 - P(ganar la partida) con su intervalo de confianza del 95 % (Wilson);
-- P(ganar la jugada) según haya habido mus o no, y según haya visto una seña de su
-  compañero o los rivales le hayan pillado la suya;
+- P(ganar la jugada) y tantos de ventaja por jugada, según haya habido mus o no, y
+  según haya visto una seña de su compañero o los rivales le hayan pillado la suya;
 - la calibración: la probabilidad que el bot calcula de ganar cada lance frente a lo
   que pasa de verdad al enseñar las cartas.
 """
@@ -174,11 +174,29 @@ def rate(rows: list[bool]) -> dict[str, float]:
     return {"p": round(p, 4), "low": round(low, 4), "high": round(high, 4), "n": len(rows)}
 
 
+def margin(diffs: list[int]) -> dict[str, float]:
+    """Tantos de ventaja por jugada (media) con su intervalo del 95 %."""
+    n = len(diffs)
+    if n < 2:
+        return {"tantos": 0.0, "tantos_low": 0.0, "tantos_high": 0.0}
+    mean = sum(diffs) / n
+    sd = math.sqrt(sum((d - mean) ** 2 for d in diffs) / (n - 1))
+    half = 1.96 * sd / math.sqrt(n)
+    return {
+        "tantos": round(mean, 3),
+        "tantos_low": round(mean - half, 3),
+        "tantos_high": round(mean + half, 3),
+    }
+
+
 def report(results: list[dict[str, Any]]) -> dict[str, Any]:
     hands = [h for r in results for h in r["hands"]]
 
     def hand_rate(pred: Callable[[dict[str, Any]], bool]) -> dict[str, float]:
-        return rate([h["ours"] > h["theirs"] for h in hands if pred(h)])
+        chosen = [h for h in hands if pred(h)]
+        out = rate([h["ours"] > h["theirs"] for h in chosen])
+        out.update(margin([h["ours"] - h["theirs"] for h in chosen]))
+        return out
 
     bins: dict[int, list[bool]] = defaultdict(list)
     for p, won in (c for r in results for c in r["calibration"]):
