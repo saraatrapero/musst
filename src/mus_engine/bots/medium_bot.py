@@ -367,7 +367,10 @@ class _Values:
 
     def raise_(self, bet: PublicBetView, amount: int) -> float:
         assert bet.proposer is not None
-        fold, p = self._proposer_response(bet.proposer, PROPOSER_ACCEPTS_RAISE)
+        # Quien ha envidado de farol no aguanta un revoque: con su perfil, la parte de
+        # sus envites que son faroles se va (y sólo me llevo lo envidado).
+        accept = min(PROPOSER_ACCEPTS_RAISE, 1.0 - self.profiles[bet.proposer].bluff_share())
+        fold, p = self._proposer_response(bet.proposer, accept)
         return fold * self._uncontested(bet.pending) + (1 - fold) * self.showdown(
             bet.pending + amount, p
         )

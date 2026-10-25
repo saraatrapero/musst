@@ -186,6 +186,12 @@ class PlayerProfile:
         leak = self._c(f"t.{group}.0.{hit}") / (self._c(f"t.{group}.0.n") + TIER_WEIGHT)
         return top, leak
 
+    def bluff_share(self) -> float:
+        """P(su mano está en el tramo malo | ha envidado): la parte de sus envites que son
+        faroles (regla de Bayes con :meth:`bet_given` y el peso de cada tramo)."""
+        weights = [self.bet_given(b) * w for b, w in enumerate(TIER_WIDTHS)]
+        return weights[0] / sum(weights)
+
     def mus_beta(self, signal: str, lance: LanceType) -> float:
         """Inclinación de su mano en ``lance`` tras ``signal`` (cortar o pedir mus).
 
