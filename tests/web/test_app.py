@@ -535,3 +535,66 @@ def test_profile_of_a_deleted_user_is_not_saved(client: TestClient) -> None:
     db = client.app.state.db  # type: ignore[attr-defined]
     with db.session() as session:
         assert session.query(ProfileRow).count() == 0
+
+
+# --- Administración -----------------------------------------------------------------------
+
+
+def test_admin_stats_and_password_reset() -> None:
+    with TestClient(create_app(fast_settings(admins=frozenset({"sara"})))) as client:
+        register(client, "pepe")
+        assert client.get("/api/me").json()["admin"] is False
+        assert client.get("/api/admin/stats").status_code == 403
+        assert (
+            client.post(
+                "/api/admin/password", json={"username": "sara", "password": "otraclave1"}
+            ).status_code
+            == 403
+        )
+        client.post("/api/logout")
+        register(client, "Sara")
+        assert client.get("/api/me").json()["admin"] is True
+        code = start_room(client)
+        client.post(f"/api/rooms/{code}/start")
+        play_over_socket(client, code)
+        stats = client.get("/api/admin/stats").json()
+        assert stats["users"] == 2
+        assert stats["games"] == 1
+        (row,) = stats["bots_vs_people"]
+        assert row["bot"] == "medio"
+        assert row["games"] == 1
+        assert 0 <= row["low"] <= row["rate"] <= row["high"] <= 1
+        bad = {"username": "pepe", "password": "corta"}
+        assert client.post("/api/admin/password", json=bad).status_code == 422
+        nobody = {"username": "nadie", "password": "otraclave1"}
+        assert client.post("/api/admin/password", json=nobody).status_code == 404
+        ok = {"username": "pepe", "password": "otraclave1"}
+        assert client.post("/api/admin/password", json=ok).json() == {"ok": True}
+        client.post("/api/logout")
+        login = {"username": "pepe", "password": "otraclave1"}
+        assert client.post("/api/login", json=login).status_code == 200
+
+
+def test_admin_stats_skip_games_without_people_against_bots() -> None:
+    from mus_web.app import win_rate
+    from mus_web.db import GameRow, GameSeat
+
+    with TestClient(create_app(fast_settings(admins=frozenset({"sara"})))) as client:
+        register(client, "sara")
+        db = client.app.state.hub.db  # type: ignore[attr-defined]
+        with db.session() as session:
+            bots_only = GameRow(
+                mode="x",
+                signals=False,
+                winner_team="A",
+                final_tantos=[40, 0],
+                final_games=[1, 0],
+                record={},
+            )
+            bots_only.seats = [
+                GameSeat(seat=s, bot="medio", avatar_id="marquesa", won=s % 2 == 0)
+                for s in range(4)
+            ]
+            session.add(bots_only)
+        assert client.get("/api/admin/stats").json()["bots_vs_people"] == []
+    assert win_rate([True, False])["rate"] == 0.5

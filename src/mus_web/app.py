@@ -16,6 +16,7 @@ import asyncio
 import contextlib
 import hashlib
 import json
+import math
 import os
 import random
 import re
@@ -74,11 +75,19 @@ class Settings:
     tick_interval: float = 1.5  # un momento del reloj de miradas, con señas
     password_n: int = 2**14  # coste de scrypt (se reduce en los tests)
     seed_source: Callable[[], int] = field(default=lambda: secrets.randbits(63))
+    # Usuarios administradores (en minúsculas): ven las estadísticas y pueden poner una
+    # contraseña nueva a quien la olvide. En Render, variable MUSST_ADMINS="sara,otro".
+    admins: frozenset[str] = frozenset()
 
     @classmethod
     def from_env(cls) -> Settings:  # pragma: no cover - configuración de despliegue
         url = postgres_driver(os.environ.get("MUSST_DATABASE_URL", DEFAULT_DATABASE_URL))
-        return cls(database_url=url, secure_cookies=os.environ.get("MUSST_SECURE") == "1")
+        admins = os.environ.get("MUSST_ADMINS", "")
+        return cls(
+            database_url=url,
+            secure_cookies=os.environ.get("MUSST_SECURE") == "1",
+            admins=frozenset(a.strip().lower() for a in admins.split(",") if a.strip()),
+        )
 
 
 def postgres_driver(url: str) -> str:
@@ -100,6 +109,11 @@ class RegisterIn(BaseModel):
 
 
 class LoginIn(BaseModel):
+    username: str
+    password: str
+
+
+class PasswordResetIn(BaseModel):
     username: str
     password: str
 
@@ -369,7 +383,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "games_played": user.games_played,
             "games_won": user.games_won,
             "created_at": user.created_at.isoformat(),
+            "admin": is_admin(user),
         }
+
+    def is_admin(user: User) -> bool:
+        return user.username.lower() in settings.admins
+
+    def require_admin(user: User) -> None:
+        if not is_admin(user):
+            raise HTTPException(403, "Sólo para administradores")
 
     def check_avatar(avatar: str) -> str:
         if avatar not in avatars_by_id():
@@ -536,6 +558,48 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         response.delete_cookie(COOKIE)
         return {"ok": True}
 
+    # --- Administración ------------------------------------------------------------------
+
+    @app.get("/api/admin/stats")
+    def admin_stats(user: CurrentUser) -> dict[str, Any]:
+        """Usuarios, partidas y cómo les va a los bots contra personas (con su IC 95 %)."""
+        require_admin(user)
+        with db.session() as session:
+            users = len(session.scalars(select(User.id)).all())
+            games = session.scalars(select(GameRow)).all()
+            versus: dict[str, list[bool]] = defaultdict(list)
+            for game in games:
+                people = [s for s in game.seats if s.user_id is not None]
+                if not people:
+                    continue
+                team = people[0].seat % 2
+                rivals = [s for s in game.seats if s.seat % 2 != team]
+                if rivals and all(s.bot is not None for s in rivals):
+                    versus[str(rivals[0].bot)].append(rivals[0].won)
+            return {
+                "users": users,
+                "games": len(games),
+                "bots_vs_people": [
+                    {"bot": bot, **win_rate(results)} for bot, results in sorted(versus.items())
+                ],
+            }
+
+    @app.post("/api/admin/password")
+    def admin_password(body: PasswordResetIn, user: CurrentUser) -> dict[str, bool]:
+        """Pone una contraseña nueva a un usuario y cierra sus sesiones abiertas."""
+        require_admin(user)
+        try:
+            password = check_password(body.password)
+        except CredentialError as error:
+            raise HTTPException(422, str(error)) from error
+        with db.session() as session:
+            target = session.scalar(select(User).where(User.username == body.username))
+            if target is None:
+                raise HTTPException(404, "Ese usuario no existe")
+            target.password_hash = hash_password(password, n=settings.password_n)
+            target.sessions.clear()
+        return {"ok": True}
+
     # --- Salas ---------------------------------------------------------------------------
 
     def room_error(error: RoomError) -> HTTPException:
@@ -668,3 +732,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app.mount("/static", StaticFiles(directory=str(static)), name="static")
     return app
+
+
+def win_rate(results: list[bool]) -> dict[str, float | int]:
+    """Partidas, victorias, porcentaje y su intervalo de Wilson del 95 %."""
+    n, wins = len(results), sum(results)
+    z, p = 1.96, wins / n
+    centre = (p + z * z / (2 * n)) / (1 + z * z / n)
+    half = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / (1 + z * z / n)
+    return {
+        "games": n,
+        "wins": wins,
+        "rate": round(p, 4),
+        "low": round(max(0.0, centre - half), 4),
+        "high": round(min(1.0, centre + half), 4),
+    }

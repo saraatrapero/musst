@@ -161,11 +161,11 @@ MUSST_TEST_DATABASE_URL=postgresql+psycopg://musst@127.0.0.1:5432/musst python -
 
 ## Reglas de casa en la web
 
-La web juega con dos opciones de `GameConfig` que el reglamento FEM no contempla y
-que pidió la usuaria (el motor, por defecto, sigue el reglamento):
+La web juega con una opción de `GameConfig` que pidió la usuaria (el motor, por
+defecto, sigue el reglamento):
 
-- `false_signals=True`: se pueden hacer señas falsas (farol). Los bots sólo señan lo
-  que tienen.
+- Las señas, como en el reglamento: sólo se puede señar lo que se lleva (no hay señas
+  falsas; `false_signals` existe en el motor pero la web no lo activa).
 - `negadas_at_end=True`: las negadas y los envites no queridos no se suman en el
   acto, sino en el recuento final en orden de lances (grande, chica, pares, juego).
   Gana la primera pareja que llega al tanteo en ese orden y siempre se ven las cartas
@@ -187,3 +187,10 @@ que pidió la usuaria (el motor, por defecto, sigue el reglamento):
   voz: «Mus», «No hay mus», «Dame dos», «Paso», «Envido», «Quiero», «No quiero»,
   «¡Órdago!», y «Pares sí/no» y «Juego sí/no» en orden desde la mano. Los bots
   piensan 1,3 s por jugada para que dé tiempo a oírlo.
+
+## Administración
+
+Los usuarios de `MUSST_ADMINS` (en Render, `render.yaml`: `sara`) ven en el lobby un
+panel con el número de usuarios y partidas, cómo les va a los bots contra personas
+(porcentaje con intervalo de Wilson del 95 %) y un formulario para poner una
+contraseña nueva a quien la olvide (cierra sus sesiones abiertas).

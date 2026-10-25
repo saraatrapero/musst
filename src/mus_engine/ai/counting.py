@@ -22,6 +22,7 @@ from mus_engine.cards.ranking import RankingPolicy
 from mus_engine.events.events import CardsDiscarded, DiscardDeclared, DiscardPileReshuffled
 from mus_engine.game.observations import Observation
 from mus_engine.players.seating import ALL_SEATS, SeatId
+from mus_engine.rules.signals import Signal
 
 
 @dataclass(frozen=True, slots=True)
@@ -36,6 +37,8 @@ class Knowledge:
     pares: tuple[bool | None, ...]  # declaración de cada asiento (None: aún no)
     juego: tuple[bool | None, ...]
     requested: tuple[tuple[int, ...], ...]  # naipes pedidos por cada asiento, por ronda
+    # Señas que le he visto a cada asiento en esta jugada (vacío: ninguna).
+    signals: tuple[frozenset[Signal], ...] = (frozenset(),) * 4
 
 
 class CardCounter:
@@ -67,6 +70,10 @@ class CardCounter:
             pares=_declared(observation.pares_holders),
             juego=_declared(observation.juego_holders),
             requested=tuple(tuple(requested[s]) for s in ALL_SEATS),
+            signals=tuple(
+                frozenset(sig for sender, sig in observation.signals_seen if sender == s)
+                for s in ALL_SEATS
+            ),
         )
 
 

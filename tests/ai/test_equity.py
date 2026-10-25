@@ -13,6 +13,7 @@ from mus_engine.cards.ranking import RankingPolicy
 from mus_engine.players.seating import SeatId, distance_from_mano, team_of
 from mus_engine.rules.lance import LanceType
 from mus_engine.rules.lances import evaluator_for
+from mus_engine.rules.signals import Signal
 
 POLICY = RankingPolicy()
 
@@ -130,3 +131,25 @@ def test_solo_equity_of_extremes() -> None:
     assert lance_equity(best_grande, LanceType.JUEGO, POLICY) > 0.5  # 40
     no_juego = hand_class(cards("1O", "1C", "4E", "5B"))
     assert lance_equity(no_juego, LanceType.JUEGO, POLICY) == 0.0
+
+
+def seen(seat: int, signal: Signal) -> tuple[frozenset[Signal], ...]:
+    return tuple(frozenset({signal}) if s == seat else frozenset() for s in range(4))
+
+
+def test_seen_signals_change_the_odds() -> None:
+    """Fase G: la seña vista del compañero (o de un rival) cambia la probabilidad."""
+    from dataclasses import replace
+
+    hand = cards("4O", "5C", "6E", "7B")  # nada: todo depende de mi compañero
+    k = knowledge(hand)
+    base = team_equity(k, LanceType.PARES, POLICY)
+    mate_duples = team_equity(replace(k, signals=seen(2, Signal.DUPLES)), LanceType.PARES, POLICY)
+    mate_blind = team_equity(replace(k, signals=seen(2, Signal.CIEGO)), LanceType.PARES, POLICY)
+    rival_duples = team_equity(replace(k, signals=seen(1, Signal.DUPLES)), LanceType.PARES, POLICY)
+    assert mate_duples > base + 0.1  # 0,31 → 0,49
+    assert mate_blind < base
+    assert rival_duples < base
+    # Una seña nunca anula del todo las manos que no cuadran (SIGNAL_DOUBT).
+    d = distribution(LanceType.PARES, k.available, POLICY, signals=frozenset({Signal.CIEGO}))
+    assert 0 < 1 - d.none < 0.5

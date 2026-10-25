@@ -69,3 +69,26 @@ def test_declarations_are_read_and_reshuffles_reset_discards() -> None:
         for c in e.event.discarded
     ]
     assert set(knowledge.out_of_play) == set(mine_after)
+
+
+def test_seen_signals_are_read() -> None:
+    import dataclasses
+
+    from mus_engine.bots.base import BotContext
+    from mus_engine.bots.medium_bot import MediumBot
+    from mus_engine.config import GameConfig
+    from mus_engine.rules.signals import Signal
+
+    game = Game(seed=3)
+    game.start()
+    obs = dataclasses.replace(game.get_observation(0), signals_seen=((SeatId(2), Signal.DUPLES),))
+    knowledge = CardCounter(RankingPolicy()).read(obs)
+    assert knowledge.signals[2] == frozenset({Signal.DUPLES})
+    assert knowledge.signals[1] == frozenset()
+
+    class Deaf(MediumBot):
+        read_signals = False
+
+    for bot, expected in ((MediumBot(), {Signal.DUPLES}), (Deaf(), set())):
+        bot.on_game_start(BotContext(SeatId(0), GameConfig(), 1))
+        assert bot._knowledge(obs).signals[2] == frozenset(expected)

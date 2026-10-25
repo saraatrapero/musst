@@ -30,6 +30,7 @@ from mus_engine.rules.juego import JUEGO_THRESHOLD, JuegoEvaluator
 from mus_engine.rules.lance import LanceType
 from mus_engine.rules.lances import evaluator_for
 from mus_engine.rules.pares import ParesEvaluator
+from mus_engine.rules.signals import Signal, true_signals
 
 HAND_SIZE = 4
 
@@ -42,6 +43,7 @@ class HandClass:
     has_pares: bool
     has_juego: bool
     strengths: Mapping[LanceType, Strength | None]  # None: no puede jugar ese lance
+    signals: frozenset[Signal] = frozenset()  # señas que describen con verdad esta mano
 
     def counts(self) -> Counter[int]:
         return Counter(self.ranks)
@@ -104,5 +106,7 @@ def classes_by_ranks(policy: RankingPolicy) -> dict[tuple[int, ...], HandClass]:
                 None if has_juego else evaluator_for(LanceType.PUNTO, policy).strength(cards)
             ),
         }
-        found[ranks] = HandClass(ranks, has_pares, has_juego, strengths)
+        found[ranks] = HandClass(
+            ranks, has_pares, has_juego, strengths, true_signals(cards, policy)
+        )
     return found

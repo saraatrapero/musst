@@ -365,6 +365,7 @@ async function lobby() {
         avatarPicker(me.avatar, async (id) => { state.me = await api("PUT", "/api/me/avatar", { avatar: id }); lobby(); }),
         h("button", { class: "secondary", onclick: exportData }, "Descargar mis datos"),
         h("button", { class: "danger", onclick: deleteAccount }, "Borrar mi cuenta"))),
+    me.admin && adminPanel(),
     h("section", { class: "panel" }, h("h2", {}, "Mis últimas partidas"),
       h("table", { class: "list" }, h("thead", {}, h("tr", {}, h("th", {}, "Fecha"), h("th", {}, "Modo"), h("th", {}, "Señas"), h("th", {}, "Resultado"), h("th", {}, "Tantos"))), games)));
   try {
@@ -386,6 +387,30 @@ async function lobby() {
         h("td", {}, g.signals ? "sí" : "no"), h("td", {}, g.won ? "Ganada" : "Perdida"), h("td", {}, g.tantos.join(" – "))));
     }
   } catch (e) { err.textContent = e.message; }
+}
+
+// Panel de administración: estadísticas y contraseña nueva para quien la olvide.
+function adminPanel() {
+  const box = h("section", { class: "panel admin" }, h("h2", {}, "🛠️ Administración"), h("p", { class: "muted" }, "Cargando…"));
+  const pct = (x) => `${(x * 100).toFixed(1).replace(".", ",")} %`;
+  const user = h("input", { type: "text", maxlength: 24, placeholder: "usuario" });
+  const pass = h("input", { type: "password", minlength: 8, placeholder: "contraseña nueva (8 o más)" });
+  const msg = h("p", { class: "muted" });
+  const reset = async () => {
+    try { await api("POST", "/api/admin/password", { username: user.value.trim(), password: pass.value }); msg.textContent = `Contraseña cambiada para ${user.value.trim()}.`; pass.value = ""; }
+    catch (e) { msg.textContent = e.message; }
+  };
+  api("GET", "/api/admin/stats").then((s) => {
+    const rows = s.bots_vs_people.map((r) => h("tr", {}, h("td", {}, r.bot), h("td", {}, String(r.games)), h("td", {}, String(r.wins)),
+      h("td", {}, `${pct(r.rate)} (${pct(r.low)} a ${pct(r.high)})`)));
+    box.replaceChildren(h("h2", {}, "🛠️ Administración"),
+      h("p", {}, `${s.users} usuarios · ${s.games} partidas guardadas`),
+      h("h3", {}, "Bots contra personas"),
+      rows.length ? h("table", { class: "list" }, h("thead", {}, h("tr", {}, h("th", {}, "Bot"), h("th", {}, "Partidas"), h("th", {}, "Gana el bot"), h("th", {}, "% (intervalo 95 %)"))), h("tbody", {}, rows))
+        : h("p", { class: "muted" }, "Todavía no hay partidas terminadas de personas contra bots."),
+      h("h3", {}, "Poner una contraseña nueva"), user, pass, h("button", { onclick: reset }, "Cambiar contraseña"), msg);
+  }).catch((e) => box.replaceChildren(h("h2", {}, "🛠️ Administración"), h("p", { class: "error" }, e.message)));
+  return box;
 }
 
 async function exportData() {
@@ -886,7 +911,7 @@ function signalsPanel(g) {
       h("span", {}, mateLooks ? `¡${g.names[mate]} te está mirando! Es el momento.` : `${g.names[mate]} no te mira ahora: espera a que te mire.`),
       rivalsLook.length > 0 && h("span", { class: "warn" }, `👀 Cuidado: te mira ${rivalsLook.join(" y ")}`)));
   if (!legal.length) box.append(h("div", { class: "muted" }, "Ahora no puedes hacer señas (se hacen después de cortar el mus)."));
-  else box.append(h("div", { class: "muted" }, "Puedes señar cualquier jugada, aunque no la tengas: un farol engaña a los rivales que te miren (ojo, tu compañero también se lo creerá)."));
+  else box.append(h("div", { class: "muted" }, "Sólo puedes señar lo que llevas: las señas falsas no están permitidas."));
   const row = h("div", { class: "sig-buttons" });
   for (const a of legal) row.append(h("button", { class: "small sig", onclick: () => send(a) }, h("b", {}, SIGNALS[a.signal] || a.signal), h("small", {}, SIGNAL_HELP[a.signal] || "")));
   box.append(row);
