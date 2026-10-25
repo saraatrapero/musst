@@ -382,7 +382,9 @@ async function lobby() {
         avatarPicker(me.avatar, async (id) => { state.me = await api("PUT", "/api/me/avatar", { avatar: id }); lobby(); }),
         h("button", { class: "secondary", onclick: exportData }, "Descargar mis datos"),
         h("button", { class: "danger", onclick: deleteAccount }, "Borrar mi cuenta"))),
-    me.admin && adminPanel(),
+    me.admin && h("section", { class: "panel admin" }, h("h2", {}, "🛠️ Administración"),
+      h("p", { class: "muted" }, "Usuarios (ver, editar, borrar), estadísticas y cómo les va a los bots."),
+      h("button", { onclick: () => adminScreen() }, "Abrir el panel de administración")),
     h("section", { class: "panel" }, h("h2", {}, "Mis últimas partidas"),
       h("table", { class: "list" }, h("thead", {}, h("tr", {}, h("th", {}, "Fecha"), h("th", {}, "Modo"), h("th", {}, "Señas"), h("th", {}, "Resultado"), h("th", {}, "Tantos"))), games)));
   try {
@@ -406,28 +408,218 @@ async function lobby() {
   } catch (e) { err.textContent = e.message; }
 }
 
-// Panel de administración: estadísticas y contraseña nueva para quien la olvide.
-function adminPanel() {
-  const box = h("section", { class: "panel admin" }, h("h2", {}, "🛠️ Administración"), h("p", { class: "muted" }, "Cargando…"));
-  const pct = (x) => `${(x * 100).toFixed(1).replace(".", ",")} %`;
-  const user = h("input", { type: "text", maxlength: 24, placeholder: "usuario" });
-  const pass = h("input", { type: "password", minlength: 8, placeholder: "contraseña nueva (8 o más)" });
-  const msg = h("p", { class: "muted" });
-  const reset = async () => {
-    try { await api("POST", "/api/admin/password", { username: user.value.trim(), password: pass.value }); msg.textContent = `Contraseña cambiada para ${user.value.trim()}.`; pass.value = ""; }
+// --- Administración ----------------------------------------------------------------------
+// Panel completo para administradores: resumen con gráficas, usuarios (ver, editar,
+// borrar), partidas recientes y cómo les va a los bots contra personas.
+
+const STYLE_NAMES = ["por conocer", "equilibrado", "conservador", "cauto", "arriesgado", "farolero", "de tapado", "imprevisible"];
+const pctAdmin = (x) => `${(x * 100).toFixed(1).replace(".", ",")} %`;
+const dateTime = (iso) => new Date(iso + "Z").toLocaleString();
+const ago = (iso) => {
+  const mins = Math.round((Date.now() - new Date(iso + "Z")) / 60000);
+  if (mins < 60) return `hace ${Math.max(mins, 0)} min`;
+  if (mins < 60 * 24) return `hace ${Math.round(mins / 60)} h`;
+  return `hace ${Math.round(mins / 1440)} d`;
+};
+
+function svgEl(name, attrs = {}, ...children) {
+  const e = document.createElementNS("http://www.w3.org/2000/svg", name);
+  for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+  for (const c of children) e.append(c);
+  return e;
+}
+
+// Columnas por día (una serie): cada barra dice su valor al pasar el ratón.
+function dayBars(rows, key, label) {
+  const w = 600, hgt = 140, pad = 22, n = rows.length;
+  const max = Math.max(1, ...rows.map((r) => r[key]));
+  const step = (w - pad) / n, bw = Math.max(2, step - 2);
+  const svg = svgEl("svg", { viewBox: `0 0 ${w} ${hgt + 20}`, class: "chart", role: "img", "aria-label": label });
+  for (const f of max >= 2 ? [0.5, 1] : [1]) {
+    const y = hgt - (hgt - 10) * f;
+    svg.append(svgEl("line", { x1: pad, x2: w, y1: y, y2: y, class: "grid" }),
+      svgEl("text", { x: pad - 4, y: y + 4, class: "axis", "text-anchor": "end" }, String(Math.round(max * f))));
+  }
+  svg.append(svgEl("line", { x1: pad, x2: w, y1: hgt, y2: hgt, class: "base" }));
+  rows.forEach((r, i) => {
+    const x = pad + i * step + 1, v = r[key], bh = ((hgt - 10) * v) / max;
+    const day = new Date(r.day + "T00:00:00").toLocaleDateString(undefined, { day: "numeric", month: "short" });
+    const g = svgEl("g", { class: "bar" }, svgEl("title", {}, `${day}: ${v}`));
+    g.append(svgEl("rect", { x, y: 0, width: step, height: hgt, class: "hit" }));
+    if (v) g.append(svgEl("rect", { x, y: hgt - bh, width: bw, height: bh, rx: Math.min(3, bw / 2) }));
+    svg.append(g);
+    if (i % 7 === n % 7 - 1 || i === n - 1) svg.append(svgEl("text", { x: x + bw / 2, y: hgt + 15, class: "axis", "text-anchor": "middle" }, day));
+  });
+  return h("figure", { class: "chartbox" }, h("figcaption", {}, label), svg);
+}
+
+// Barras horizontales con su número al lado (reparto de modos, estilos…).
+function hBars(label, entries, names = {}) {
+  const total = entries.reduce((a, [, v]) => a + v, 0) || 1;
+  const max = Math.max(1, ...entries.map(([, v]) => v));
+  return h("figure", { class: "chartbox" }, h("figcaption", {}, label),
+    entries.length ? h("div", { class: "hbars" }, entries.map(([k, v]) => {
+      const fill = h("span", { class: "fill" });
+      fill.style.width = `${(100 * v) / max}%`;
+      return h("div", { class: "hbar", title: `${names[k] || k}: ${v} (${Math.round((100 * v) / total)} %)` },
+        h("span", { class: "name" }, names[k] || k), h("span", { class: "track" }, fill), h("span", { class: "val" }, String(v)));
+    })) : h("p", { class: "muted" }, "Sin datos todavía."));
+}
+
+function kpi(value, label, sub) {
+  return h("div", { class: "kpi" }, h("div", { class: "kv" }, String(value)), h("div", { class: "kl" }, label), sub && h("div", { class: "ks muted" }, sub));
+}
+
+function gameRow(g) {
+  const team = (t) => g.players.filter((_, i) => i % 2 === t).map((p) => (p.bot ? `🤖 ${p.name}` : `👤 ${p.name}`)).join(" y ");
+  return h("tr", {}, h("td", {}, dateTime(g.finished_at)), h("td", {}, MODES[g.mode] || g.mode), h("td", {}, g.signals ? "sí" : "no"),
+    h("td", { class: g.winner_team === "A" ? "win" : "" }, team(0)), h("td", { class: g.winner_team === "B" ? "win" : "" }, team(1)),
+    h("td", {}, g.tantos.join(" – ")));
+}
+
+function gamesTable(games) {
+  return games.length ? h("div", { class: "scroll" }, h("table", { class: "list" },
+    h("thead", {}, h("tr", {}, ["Fecha", "Modo", "Señas", "Pareja A", "Pareja B", "Tantos"].map((t) => h("th", {}, t)))),
+    h("tbody", {}, games.map(gameRow)))) : h("p", { class: "muted" }, "Todavía no hay partidas terminadas.");
+}
+
+async function adminScreen(tab = "resumen") {
+  closeSocket();
+  document.body.classList.remove("playing");
+  renderWho();
+  const tabs = [["resumen", "📊 Resumen"], ["usuarios", "👥 Usuarios"], ["partidas", "🃏 Partidas"], ["bots", "🤖 Bots"]];
+  const body = h("div", {}, h("p", { class: "muted" }, "Cargando…"));
+  mount(h("section", { class: "panel admin" },
+    h("div", { class: "adminhead" }, h("h2", {}, "🛠️ Administración"),
+      h("button", { class: "secondary", onclick: () => lobby() }, "← Volver al lobby"),
+      h("button", { class: "secondary", onclick: () => adminScreen(tab) }, "↻ Actualizar")),
+    segmented(tabs, tab, (v) => adminScreen(v)), body));
+  try {
+    if (tab === "usuarios") return body.replaceChildren(await adminUsers());
+    const s = await api("GET", "/api/admin/stats");
+    if (tab === "partidas") return body.replaceChildren(h("h3", {}, "Últimas 20 partidas"), gamesTable(s.recent_games));
+    if (tab === "bots") return body.replaceChildren(adminBots(s));
+    const k = s.kpis;
+    body.replaceChildren(
+      h("div", { class: "kpis" },
+        kpi(k.users, "usuarios", `${k.new_users_7d} nuevos esta semana`),
+        kpi(k.active_users_7d, "activos en 7 días"),
+        kpi(k.games, "partidas jugadas", `${k.games_7d} esta semana · ${k.games_today} hoy`),
+        kpi(k.rooms_playing, "partidas en juego ahora", `${k.rooms_open} salas abiertas`),
+        kpi(k.people_connected, "personas conectadas"),
+        kpi(k.open_sessions, "sesiones abiertas")),
+      h("div", { class: "grid2" },
+        dayBars(s.games_per_day, "games", "Partidas por día (últimos 30 días)"),
+        dayBars(s.users_per_day, "users", "Usuarios nuevos por día (últimos 30 días)")),
+      h("div", { class: "grid2" },
+        hBars("Modo de juego", Object.entries(s.modes).sort((a, b) => b[1] - a[1]), MODES),
+        hBars("Con o sin señas", Object.entries(s.signals), { con: "Con señas", sin: "Sin señas" }),
+        hBars("Estilo de los jugadores según la IA", STYLE_NAMES.filter((n) => s.styles[n]).map((n) => [n, s.styles[n]]))),
+      h("h3", {}, "Mejores jugadores"),
+      s.top_players.length ? h("div", { class: "scroll" }, h("table", { class: "list" },
+        h("thead", {}, h("tr", {}, ["", "Usuario", "Partidas", "Ganadas", "% ganadas"].map((t) => h("th", {}, t)))),
+        h("tbody", {}, s.top_players.map((p, i) => h("tr", {}, h("td", {}, ["🥇", "🥈", "🥉"][i] || String(i + 1)), h("td", {}, p.username),
+          h("td", {}, String(p.games)), h("td", {}, String(p.wins)), h("td", {}, pctAdmin(p.rate)))))))
+        : h("p", { class: "muted" }, "Nadie ha terminado una partida todavía."));
+  } catch (e) { body.replaceChildren(h("p", { class: "error" }, e.message)); }
+}
+
+function adminBots(s) {
+  const rows = s.bots_vs_people.map((r) => {
+    const fill = h("span", { class: "ci" }), dot = h("span", { class: "dot" });
+    fill.style.left = `${r.low * 100}%`; fill.style.width = `${(r.high - r.low) * 100}%`; dot.style.left = `${r.rate * 100}%`;
+    return h("tr", {}, h("td", {}, `Nivel ${r.bot}`), h("td", {}, String(r.games)), h("td", {}, String(r.wins)),
+      h("td", {}, `${pctAdmin(r.rate)} (${pctAdmin(r.low)} a ${pctAdmin(r.high)})`),
+      h("td", { class: "cicell" }, h("span", { class: "citrack", title: "Intervalo de confianza del 95 % (Wilson); la raya marca el 50 %" }, h("span", { class: "half" }), fill, dot)));
+  });
+  return h("div", {},
+    h("h3", {}, "Bots contra personas"),
+    h("p", { class: "muted" }, "Partidas en que una pareja de bots jugó contra al menos una persona. Si todo el intervalo queda a la derecha del 50 %, el bot gana a las personas con un 95 % de confianza."),
+    rows.length ? h("table", { class: "list" }, h("thead", {}, h("tr", {}, ["Bot", "Partidas", "Gana el bot", "% (intervalo 95 %)", ""].map((t) => h("th", {}, t)))), h("tbody", {}, rows))
+      : h("p", { class: "muted" }, "Todavía no hay partidas terminadas de personas contra bots."),
+    h("h3", {}, "Cómo aprende el bot medio"),
+    h("p", {}, "En cada partida, la IA anota cómo juega cada persona (cuánto envida, con qué manos, cuándo quiere) y lo guarda en su perfil. El bot medio lo usa en las siguientes partidas para saber si un envite suyo es farol y si querrá. El estilo de cada usuario se ve en la pestaña Usuarios."));
+}
+
+async function adminUsers() {
+  const users = await api("GET", "/api/admin/users");
+  const search = h("input", { type: "text", placeholder: "Buscar usuario…" });
+  const tbody = h("tbody");
+  const detail = h("div");
+  const fill = () => {
+    const q = search.value.trim().toLowerCase();
+    tbody.replaceChildren(...users.filter((u) => u.username.toLowerCase().includes(q)).map((u) => {
+      const rate = u.games_played ? pctAdmin(u.games_won / u.games_played) : "–";
+      return h("tr", {},
+        h("td", {}, h("span", { class: "who" }, face(avatarById(u.avatar)), u.username, u.admin && h("span", { class: "badge", title: u.admin_source === "config" ? "Administrador por MUSST_ADMINS" : "Administrador desde el panel" }, "admin"))),
+        h("td", {}, String(u.games_played)), h("td", {}, rate), h("td", {}, u.style),
+        h("td", { title: dateTime(u.last_active) }, ago(u.last_active)), h("td", {}, new Date(u.created_at + "Z").toLocaleDateString()),
+        h("td", { class: "actions" },
+          h("button", { class: "secondary", onclick: () => showUser(u, detail) }, "Ver"),
+          h("button", { class: "secondary", onclick: () => editUser(u, detail) }, "Editar"),
+          h("button", { class: "danger", disabled: u.id === state.me.id, onclick: () => removeUser(u) }, "Borrar")));
+    }));
+  };
+  search.addEventListener("input", fill);
+  fill();
+  const csv = () => {
+    const cols = ["id", "username", "avatar", "admin", "games_played", "games_won", "style", "created_at", "last_active", "open_sessions"];
+    const text = [cols.join(","), ...users.map((u) => cols.map((c) => JSON.stringify(u[c] ?? "")).join(","))].join("\n");
+    h("a", { href: URL.createObjectURL(new Blob([text], { type: "text/csv" })), download: "musst-usuarios.csv" }).click();
+  };
+  return h("div", {},
+    h("div", { class: "adminhead" }, search, h("button", { class: "secondary", onclick: csv }, "⬇ Descargar CSV")),
+    h("p", { class: "muted" }, `${users.length} usuarios`),
+    detail,
+    h("div", { class: "scroll" }, h("table", { class: "list users" },
+      h("thead", {}, h("tr", {}, ["Usuario", "Partidas", "% ganadas", "Estilo (IA)", "Última actividad", "Alta", ""].map((t) => h("th", {}, t)))), tbody)));
+}
+
+async function showUser(u, box) {
+  box.replaceChildren(h("p", { class: "muted" }, "Cargando…"));
+  try {
+    const d = await api("GET", `/api/admin/users/${u.id}`);
+    const p = d.profile;
+    const pct = (x) => `${Math.round(x * 100)} %`;
+    box.replaceChildren(h("div", { class: "panel userdetail" },
+      h("div", { class: "adminhead" }, face(avatarById(d.avatar)), h("h3", {}, d.username), h("button", { class: "secondary", onclick: () => box.replaceChildren() }, "Cerrar")),
+      h("p", {}, `${d.games_played} partidas · ${d.games_won} ganadas · alta ${new Date(d.created_at + "Z").toLocaleDateString()} · ${d.open_sessions} sesiones abiertas`),
+      p ? h("ul", {},
+        h("li", {}, "Estilo según la IA: ", h("b", {}, p.style), ` (confianza ${pct(p.confidence)}, ${p.decisions} decisiones)`),
+        h("li", {}, `Envida en ${pct(p.bet_rate)} de las ocasiones; órdago en ${pct(p.ordago_rate)}`),
+        h("li", {}, `Quiere ${pct(p.accept_rate)} de los envites y ${pct(p.accept_ordago_rate)} de los órdagos`),
+        h("li", {}, `Farol (envidar con mano mala): ${pct(p.bluff_rate)} · Ir de tapado: ${pct(p.slowplay_rate)}`))
+        : h("p", { class: "muted" }, "La IA aún no tiene perfil de este usuario."),
+      h("h3", {}, "Sus últimas partidas"), gamesTable(d.games),
+      h("button", { class: "secondary", onclick: async () => { await api("POST", `/api/admin/users/${u.id}/logout`); showUser(u, box); } }, "Cerrar sus sesiones")));
+  } catch (e) { box.replaceChildren(h("p", { class: "error" }, e.message)); }
+}
+
+function editUser(u, box) {
+  const name = h("input", { type: "text", maxlength: 24, value: u.username });
+  const avatar = h("select", {}, state.avatars.map((a) => h("option", { value: a.id, selected: a.id === u.avatar }, a.nickname)));
+  const pass = h("input", { type: "password", minlength: 8, placeholder: "déjala vacía para no cambiarla" });
+  const admin = h("input", { type: "checkbox", checked: u.admin, disabled: u.admin_source === "config" || u.id === state.me.id });
+  const msg = h("p", { class: "error" });
+  const save = async () => {
+    const body = { username: name.value.trim(), avatar: avatar.value, admin: admin.checked };
+    if (pass.value) body.password = pass.value;
+    try { await api("PATCH", `/api/admin/users/${u.id}`, body); adminScreen("usuarios"); }
     catch (e) { msg.textContent = e.message; }
   };
-  api("GET", "/api/admin/stats").then((s) => {
-    const rows = s.bots_vs_people.map((r) => h("tr", {}, h("td", {}, r.bot), h("td", {}, String(r.games)), h("td", {}, String(r.wins)),
-      h("td", {}, `${pct(r.rate)} (${pct(r.low)} a ${pct(r.high)})`)));
-    box.replaceChildren(h("h2", {}, "🛠️ Administración"),
-      h("p", {}, `${s.users} usuarios · ${s.games} partidas guardadas`),
-      h("h3", {}, "Bots contra personas"),
-      rows.length ? h("table", { class: "list" }, h("thead", {}, h("tr", {}, h("th", {}, "Bot"), h("th", {}, "Partidas"), h("th", {}, "Gana el bot"), h("th", {}, "% (intervalo 95 %)"))), h("tbody", {}, rows))
-        : h("p", { class: "muted" }, "Todavía no hay partidas terminadas de personas contra bots."),
-      h("h3", {}, "Poner una contraseña nueva"), user, pass, h("button", { onclick: reset }, "Cambiar contraseña"), msg);
-  }).catch((e) => box.replaceChildren(h("h2", {}, "🛠️ Administración"), h("p", { class: "error" }, e.message)));
-  return box;
+  box.replaceChildren(h("div", { class: "panel userdetail" },
+    h("h3", {}, `Editar a ${u.username}`),
+    h("label", {}, "Nombre de usuario"), name,
+    h("label", {}, "Avatar"), avatar,
+    h("label", {}, "Contraseña nueva"), pass,
+    h("label", { class: "check" }, admin, u.admin_source === "config" ? "Administrador (por MUSST_ADMINS; se cambia en Render)" : "Administrador"),
+    h("button", { onclick: save }, "Guardar"), h("button", { class: "secondary", onclick: () => box.replaceChildren() }, "Cancelar"), msg));
+}
+
+async function removeUser(u) {
+  if (!confirm(`¿Borrar la cuenta de ${u.username}? Se borran su perfil y sus sesiones, y su nombre desaparece de las partidas. No se puede deshacer.`)) return;
+  try { await api("DELETE", `/api/admin/users/${u.id}`); adminScreen("usuarios"); }
+  catch (e) { alert(e.message); }
 }
 
 async function exportData() {

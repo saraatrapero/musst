@@ -140,3 +140,35 @@ def test_profiled_bot_reads_rivals_and_remembers() -> None:
     assert bot.decide(obs) in (AcceptAction(), RejectAction(), OrdagoAction())
     plain = medio(2)
     assert plain.profile_of(SeatId(1), obs) == PlayerProfile()  # sin perfiles por defecto
+
+
+def test_web_level_learns_from_each_player() -> None:
+    from mus_engine.bots.medium_bot import LearningMediumBot
+    from mus_web.rooms import BOT_LEVELS
+
+    assert BOT_LEVELS["medio"] is LearningMediumBot
+    assert LearningMediumBot.use_profiles
+    assert not MediumBot.use_profiles
+
+
+def test_no_endless_raise_wars() -> None:
+    """Cuatro bots medios: nadie sube a más de 10 un envite (antes llegaban a 38)."""
+    from mus_engine.config import GameConfig
+    from mus_engine.game.actions import RaiseAction
+    from mus_engine.game.game import Game
+
+    config = GameConfig(negadas_at_end=True)
+    for seed in range(3):
+        bots = [MediumBot() for _ in range(4)]
+        for s, bot in enumerate(bots):
+            bot.on_game_start(BotContext(SeatId(s), config, seed + s, {}))
+        game = Game(config=config, seed=seed)
+        game.start()
+        while not game.is_finished:
+            (seat,) = game.current_actors()
+            observation = game.get_observation(seat)
+            action = bots[seat].decide(observation)
+            if isinstance(action, RaiseAction):
+                assert observation.bet is not None
+                assert observation.bet.pending < 10
+            game.apply_action(seat, action)

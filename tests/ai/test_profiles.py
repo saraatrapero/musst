@@ -147,3 +147,13 @@ def test_cut_signal_is_learned_per_player() -> None:
     simple, *_ = played([SimpleBot, RandomBot, SimpleBot, RandomBot], range(12))
     assert simple.counts.get(f"m.{CUT}.grande.n", 0) > 0
     assert simple.mus_beta(CUT, LanceType.GRANDE) > 0
+
+
+def test_bluff_share_grows_with_shown_bluffs() -> None:
+    """Parte de sus envites que son faroles: sin datos, poca; con faroles enseñados, más."""
+    from mus_engine.ai.profiles import PlayerProfile
+
+    nobody = PlayerProfile()
+    bluffer = PlayerProfile({"t.open.0.n": 20, "t.open.0.bet": 12, "open.n": 40, "open.bet": 24})
+    honest = PlayerProfile({"t.open.0.n": 20, "open.n": 40, "open.bet": 8})
+    assert honest.bluff_share() < nobody.bluff_share() < 0.1 < bluffer.bluff_share()

@@ -232,3 +232,38 @@ Resultados en `docs/arbol_mano.json` (bot medio contra sencillo, 3.000 partidas,
   sencillo, que no farolea, baja al 0,3 %.
 - Usar ese perfil al decidir no cambia todavía el resultado: 63,6 % de victorias
   contra faroleros con y sin perfiles (250 partidas cada uno, tras 20 de aprendizaje).
+
+### El bot que aprende de cada persona (`scripts/aprendizaje.py`)
+
+En la web, el nivel medio es `LearningMediumBot`: el bot medio con `use_profiles`
+activado. Usa el perfil que la web guarda de cada persona entre partidas para
+interpretar sus envites (¿farol o jugada?) y prever si querrá.
+
+Se midió por parejas: la misma semilla, con el perfil y sin él, a lo largo de series
+de 30 partidas contra el mismo rival (24 series por estilo). Resultados en
+`docs/aprendizaje.json`:
+
+| Rival | 1.ª partida | 2.ª a 5.ª | 6.ª a 15.ª | 16.ª o más |
+|---|---|---|---|---|
+| Miedoso (abandona casi todo) | 92 % vs 88 % | 95 % vs 76 % | 96 % vs 74 % | 96 % vs 78 % |
+| Sencillo (sin estilo marcado) | 75 % vs 75 % | 69 % vs 66 % | 64 % vs 65 % | 68 % vs 68 % |
+| Farolero | 71 % vs 58 % | 69 % vs 71 % | 59 % vs 65 % | 67 % vs 68 % |
+
+Porcentaje de partidas ganadas con perfil vs sin perfil. Contra el miedoso la
+ventaja aparece desde la 2.ª partida: +13 a +16 tantos por partida, con IC 95 %
+lejos de cero. Contra el sencillo es neutra.
+
+Contra el farolero el bot ya detecta bien los faroles (estimación del 27,5 % frente a
+un 26,2 % real), pero aún no lo convierte en más victorias: las diferencias caben en
+el ruido. Se probó no revocar los envites de quien farolea, y no bastó. Queda
+pendiente explotar mejor a los faroleros (querer más a menudo con manos medianas).
+
+### Sin guerras de revoques (petición de la usuaria)
+
+El bot daba por hecho que quien envidó se iba un 15 % de las veces ante cada subida,
+por muchas subidas que llevaran. Con un bote grande, ese 15 % «pagaba» subir con
+cualquier mano, y dos bots se revocaban sin fin (hasta 38 piedras a la chica sin nada).
+Ahora, si ya hubo un revoque, quien envidó no se va, y el bot sólo vuelve a subir si
+cree ganar el lance con un 80 % o más (`RERAISE_MIN_WIN`). En 30 partidas de cuatro
+bots medios ningún envite pasa ya de 10, y contra el sencillo gana el 68,2 % de 500
+partidas (antes 64,8 %). Test: `test_no_endless_raise_wars`.
