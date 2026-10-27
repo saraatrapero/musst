@@ -16,6 +16,7 @@ import asyncio
 import contextlib
 import hashlib
 import json
+import logging
 import math
 import os
 import random
@@ -25,7 +26,7 @@ import time
 from collections import Counter, defaultdict
 from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from importlib import resources
 from typing import Annotated, Any
 from urllib.parse import urlsplit
@@ -39,15 +40,20 @@ from sqlalchemy.orm import Session
 from starlette.websockets import WebSocketDisconnect
 
 from mus_engine.ai.profiles import PlayerProfile
+from mus_engine.players.seating import SeatId
+from mus_web import championships as champ_rules
 from mus_web.avatars_pack import avatars_by_id, load_pack
+from mus_web.championships import ChampionshipError
 from mus_web.codec import record_to_json
 from mus_web.db import (
     AdminRow,
+    Championship,
     Database,
     GameRow,
     GameSeat,
     LoginSession,
     ProfileRow,
+    SiteSetting,
     User,
     utcnow,
 )
@@ -90,6 +96,9 @@ class Settings:
     # y estadísticas). En Render, variable MUSST_ADMINS="sara,otro". Desde el panel se
     # puede hacer administradores a otros usuarios (tabla ``admins``).
     admins: frozenset[str] = frozenset()
+    # «usuario:contraseña» para recuperar una cuenta sin entrar (MUSST_RESET_PASSWORD en
+    # Render): al arrancar pone esa contraseña (o crea la cuenta). Se quita después.
+    reset_password: str | None = None
 
     @classmethod
     def from_env(cls) -> Settings:  # pragma: no cover - configuración de despliegue
@@ -99,6 +108,7 @@ class Settings:
             database_url=url,
             secure_cookies=os.environ.get("MUSST_SECURE") == "1",
             admins=frozenset(a.strip().lower() for a in admins.split(",") if a.strip()),
+            reset_password=os.environ.get("MUSST_RESET_PASSWORD") or None,
         )
 
 
@@ -141,6 +151,51 @@ class UserEditIn(BaseModel):
     admin: bool | None = None
 
 
+DRINKS = ("cerveza", "refresco", "cafe", "agua", "ninguna")
+HEX_COLOR = re.compile(r"#[0-9a-fA-F]{6}")
+AD_IMAGE = re.compile(r"data:image/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+")
+MAX_AD_IMAGE = 400_000  # caracteres del data URL (unos 300 KB de imagen)
+DEFAULT_ADS: dict[str, Any] = {
+    "card_brand": "MUS.ST",
+    "card_color": "#9d1f26",
+    "card_image": None,
+    "drink": "cerveza",
+    "drink_brand": "",
+    "drink_color": "#c8102e",
+    "drink_image": None,
+}
+
+
+class AdsIn(BaseModel):
+    """Publicidad de la mesa: reverso de las cartas y consumición junto a cada jugador."""
+
+    card_brand: str = DEFAULT_ADS["card_brand"]
+    card_color: str = DEFAULT_ADS["card_color"]
+    card_image: str | None = None
+    drink: str = DEFAULT_ADS["drink"]
+    drink_brand: str = ""
+    drink_color: str = DEFAULT_ADS["drink_color"]
+    drink_image: str | None = None
+
+
+class ChampionshipIn(BaseModel):
+    name: str
+    starts_at: datetime
+    size: int = 8
+    target: int = 40
+    signals: bool = False
+
+
+class SignUpIn(BaseModel):
+    team_name: str
+    partner: str = "bot"  # «bot» o «persona» (plaza libre para otra persona)
+    bot_avatar: str | None = None
+
+
+class WinnerIn(BaseModel):
+    team_id: int
+
+
 class DeleteIn(BaseModel):
     password: str
 
@@ -170,6 +225,7 @@ class Hub:
         self.wakeups: dict[str, asyncio.Event] = {}
         self.tasks: set[asyncio.Task[None]] = set()
         self.rng = random.Random(settings.seed_source())
+        self.match_rooms: dict[int, str] = {}  # partido de campeonato → código de su sala
 
     def user_from_token(self, token: str | None) -> User | None:
         if not token:
@@ -183,7 +239,13 @@ class Hub:
             return user
 
     def create(
-        self, host: User, mode: Mode, signals: bool, phrases: bool, level: str = DEFAULT_LEVEL
+        self,
+        host: User,
+        mode: Mode,
+        signals: bool,
+        phrases: bool,
+        level: str = DEFAULT_LEVEL,
+        reserved: dict[int, SeatId] | None = None,
     ) -> Room:
         if len(self.rooms) >= MAX_ROOMS:
             self._purge()
@@ -201,6 +263,7 @@ class Hub:
             avatars=load_pack()[1],
             rng=random.Random(self.rng.getrandbits(63)),
             level=level,
+            reserved=dict(reserved or {}),
         )
         room.join(host.id, host.username, avatars_by_id()[host.avatar_id])
         self.rooms[code] = room
@@ -309,6 +372,40 @@ class Hub:
                 else:
                     total = PlayerProfile.from_json(stored.counts) + profile
                     stored.counts = total.to_json()
+            if room.champ_match_id is not None and room.championship_id is not None:
+                session.flush()
+                self.record_match(session, room, row)
+
+    def record_match(self, session: Session, room: Room, row: GameRow) -> None:
+        """Partido de campeonato terminado: pasa a la siguiente ronda la pareja ganadora."""
+        champ = session.get(Championship, room.championship_id)
+        if champ is None:  # lo borró un administrador mientras se jugaba
+            return
+        match = champ_rules.match_of(champ, room.champ_match_id or 0)
+        winner = match.team_a_id if row.winner_team == "A" else match.team_b_id
+        with contextlib.suppress(ChampionshipError):  # p. ej., ya se lo dio un administrador
+            champ_rules.record(
+                champ, match, winner or 0, list(row.final_tantos), self.rng, game_id=row.id
+            )
+
+
+def reset_account(db: Database, settings: Settings) -> None:
+    """Aplica ``MUSST_RESET_PASSWORD`` («usuario:contraseña»): pone la contraseña a esa
+    cuenta y cierra sus sesiones, o la crea si no existe."""
+    assert settings.reset_password is not None
+    name, _, password = settings.reset_password.partition(":")
+    try:
+        username, password = check_username(name.strip()), check_password(password)
+    except CredentialError as error:  # mal escrita: la web arranca igual, sin tocar nada
+        logging.getLogger(__name__).warning("MUSST_RESET_PASSWORD no válida: %s", error)
+        return
+    with db.session() as session:
+        user = session.scalar(select(User).where(User.username == username))
+        if user is None:
+            user = User(username=username, password_hash="", avatar_id=load_pack()[1][0].id)
+            session.add(user)
+        user.password_hash = hash_password(password, n=settings.password_n)
+        user.sessions.clear()
 
 
 def current_user(request: Request, musst_session: Annotated[str | None, Cookie()] = None) -> User:
@@ -330,6 +427,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     db = Database(settings.database_url)
     hub = Hub(settings, db)
     failed: dict[str, list[float]] = defaultdict(list)
+    if settings.reset_password:
+        reset_account(db, settings)
 
     @contextlib.asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
@@ -696,6 +795,39 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             erase_user(session, row)
         return {"ok": True}
 
+    def ads_json() -> dict[str, Any]:
+        with db.session() as session:
+            row = session.get(SiteSetting, "ads")
+            return DEFAULT_ADS | ({} if row is None else row.value)
+
+    @app.get("/api/ads")
+    def ads() -> dict[str, Any]:
+        """Publicidad que se ve en la mesa (la elige un administrador)."""
+        return ads_json()
+
+    @app.put("/api/admin/ads")
+    def admin_ads(body: AdsIn, user: CurrentUser) -> dict[str, Any]:
+        require_admin(user)
+        if not 0 < len(body.card_brand.strip()) <= 24 or len(body.drink_brand) > 24:
+            raise HTTPException(422, "La marca tiene que tener entre 1 y 24 letras")
+        if not (HEX_COLOR.fullmatch(body.card_color) and HEX_COLOR.fullmatch(body.drink_color)):
+            raise HTTPException(422, "Los colores van en formato #rrggbb")
+        if body.drink not in DRINKS:
+            raise HTTPException(422, "Esa consumición no existe")
+        for image in (body.card_image, body.drink_image):
+            if image is not None and (len(image) > MAX_AD_IMAGE or not AD_IMAGE.fullmatch(image)):
+                raise HTTPException(
+                    422, "La imagen tiene que ser PNG, JPEG o WebP de 300 KB o menos"
+                )
+        value = body.model_dump() | {"card_brand": body.card_brand.strip()}
+        with db.session() as session:
+            row = session.get(SiteSetting, "ads")
+            if row is None:
+                session.add(SiteSetting(key="ads", value=value))
+            else:
+                row.value = value
+        return ads_json()
+
     @app.post("/api/admin/password")
     def admin_password(body: PasswordResetIn, user: CurrentUser) -> dict[str, bool]:
         """Pone una contraseña nueva a un usuario y cierra sus sesiones abiertas."""
@@ -810,6 +942,235 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 for i, name in enumerate(names)
             ],
         }
+
+    # --- Campeonatos ---------------------------------------------------------------------
+
+    def avatar_ids() -> list[str]:
+        return [a.id for a in load_pack()[1]]
+
+    def start_due(session: Session) -> None:
+        """Empieza los campeonatos cuya fecha ya ha llegado (al consultarlos)."""
+        waiting = session.scalars(
+            select(Championship).where(Championship.status == "inscripcion")
+        ).all()
+        for champ in waiting:
+            if champ_rules.due(champ):
+                champ_rules.start(session, champ, hub.rng, avatar_ids())
+
+    def find_championship(session: Session, champ_id: int) -> Championship:
+        champ = session.get(Championship, champ_id)
+        if champ is None:
+            raise HTTPException(404, "Ese campeonato no existe")
+        return champ
+
+    def champ_summary(champ: Championship, user_id: int) -> dict[str, Any]:
+        winner = next((t.name for t in champ.teams if t.id == champ.winner_team_id), None)
+        return {
+            "id": champ.id,
+            "name": champ.name,
+            "starts_at": champ.starts_at.isoformat(),
+            "size": champ.size,
+            "target": champ.target,
+            "signals": champ.signals,
+            "status": champ.status,
+            "teams": len(champ.teams),
+            "signed_up": champ_rules.team_of(champ, user_id) is not None,
+            "champion": winner,
+        }
+
+    def champ_detail(session: Session, champ: Championship, user: User) -> dict[str, Any]:
+        teams = {t.id: t for t in champ.teams}
+        ids = {u for t in champ.teams for u in champ_rules.members(t)}
+        names = dict(session.execute(select(User.id, User.username).where(User.id.in_(ids))).all())
+        mine = champ_rules.team_of(champ, user.id)
+
+        def team_json(team_id: int | None) -> dict[str, Any] | None:
+            if team_id is None:
+                return None
+            team = teams[team_id]
+            return {
+                "id": team.id,
+                "name": team.name,
+                "players": [names[u] for u in champ_rules.members(team) if u in names],
+                "bot": not champ_rules.members(team),
+                "partner_open": team.partner_open and team.partner_id is None,
+                "bot_avatars": team.bot_avatars,
+            }
+
+        rounds = []
+        for round_no in range(1, champ_rules.round_count(champ.size) + 1):
+            matches = []
+            for m in (m for m in champ.matches if m.round == round_no):
+                in_it = mine is not None and mine.id in (m.team_a_id, m.team_b_id)
+                code = hub.match_rooms.get(m.id)
+                matches.append(
+                    {
+                        "id": m.id,
+                        "team_a": team_json(m.team_a_id),
+                        "team_b": team_json(m.team_b_id),
+                        "winner_team_id": m.winner_team_id,
+                        "score": m.score,
+                        "walkover": m.walkover,
+                        "ready": champ_rules.ready(m),
+                        "mine": in_it,
+                        "room": code if code in hub.rooms else None,
+                    }
+                )
+            rounds.append(
+                {"name": champ_rules.round_name(champ.size, round_no), "matches": matches}
+            )
+        return champ_summary(champ, user.id) | {
+            "my_team_id": None if mine is None else mine.id,
+            "team_list": [team_json(t.id) for t in champ.teams],
+            "rounds": rounds,
+        }
+
+    def champ_call(action: Callable[[], object]) -> None:
+        try:
+            action()
+        except ChampionshipError as error:
+            raise HTTPException(409, str(error)) from error
+
+    @app.get("/api/championships")
+    def championships(user: CurrentUser) -> list[dict[str, Any]]:
+        """Campeonatos: los abiertos a inscripción, los que se juegan y los terminados."""
+        with db.session() as session:
+            start_due(session)
+            rows = session.scalars(
+                select(Championship).order_by(Championship.starts_at.desc())
+            ).all()
+            return [champ_summary(c, user.id) for c in rows]
+
+    @app.get("/api/championships/{champ_id}")
+    def championship(champ_id: int, user: CurrentUser) -> dict[str, Any]:
+        with db.session() as session:
+            start_due(session)
+            return champ_detail(session, find_championship(session, champ_id), user)
+
+    @app.post("/api/championships/{champ_id}/teams", status_code=201)
+    def champ_sign_up(champ_id: int, body: SignUpIn, user: CurrentUser) -> dict[str, Any]:
+        """Apuntarse con un bot de compañero o con una plaza libre para otra persona."""
+        if body.partner not in ("bot", "persona"):
+            raise HTTPException(422, "El compañero es «bot» o «persona»")
+        avatar = body.bot_avatar or avatar_ids()[0]
+        check_avatar(avatar)
+        with db.session() as session:
+            champ = find_championship(session, champ_id)
+            champ_call(
+                lambda: champ_rules.sign_up(
+                    champ, user.id, body.team_name, body.partner == "persona", avatar
+                )
+            )
+            session.flush()
+            return champ_detail(session, champ, user)
+
+    @app.post("/api/championships/{champ_id}/teams/{team_id}/join")
+    def champ_join(champ_id: int, team_id: int, user: CurrentUser) -> dict[str, Any]:
+        with db.session() as session:
+            champ = find_championship(session, champ_id)
+            champ_call(lambda: champ_rules.join_team(champ, team_id, user.id))
+            return champ_detail(session, champ, user)
+
+    @app.post("/api/championships/{champ_id}/leave")
+    def champ_leave(champ_id: int, user: CurrentUser) -> dict[str, Any]:
+        with db.session() as session:
+            champ = find_championship(session, champ_id)
+            champ_call(lambda: champ_rules.leave(champ, user.id))
+            session.flush()
+            return champ_detail(session, champ, user)
+
+    @app.post("/api/championships/{champ_id}/matches/{match_id}/play")
+    async def champ_play(champ_id: int, match_id: int, user: CurrentUser) -> dict[str, Any]:
+        """Abre (o reabre) la mesa del partido; juegan las personas de las dos parejas."""
+        with db.session() as session:
+            champ = find_championship(session, champ_id)
+            match = next((m for m in champ.matches if m.id == match_id), None)
+            if match is None or not champ_rules.ready(match):
+                raise HTTPException(409, "Ese partido no se puede jugar ahora")
+            teams = {t.id: t for t in champ.teams}
+            seats = champ_rules.seats_for(match, teams)
+            if user.id not in seats:
+                raise HTTPException(403, "Este partido es de otras parejas")
+            code = hub.match_rooms.get(match.id)
+            room = hub.rooms.get(code or "")
+            if room is None or room.finished:
+                try:
+                    room = hub.create(user, Mode.CAMPEONATO, champ.signals, True, reserved=seats)
+                except RoomError as error:
+                    raise HTTPException(503, str(error)) from error
+                room.target = champ.target
+                room.bot_avatars = champ_rules.bot_avatars_for(match, teams)
+                room.champ_match_id = match.id
+                room.championship_id = champ.id
+                team_a, team_b = teams[match.team_a_id or 0], teams[match.team_b_id or 0]
+                room.team_names = (team_a.name, team_b.name)
+                hub.match_rooms[match.id] = room.code
+        try:
+            room.join(user.id, user.username, avatars_by_id()[user.avatar_id])
+        except RoomError as error:  # pragma: no cover - el asiento está reservado
+            raise room_error(error) from error
+        await hub.broadcast(room)
+        return room.lobby_view()
+
+    @app.post("/api/admin/championships", status_code=201)
+    def admin_create_championship(body: ChampionshipIn, user: CurrentUser) -> dict[str, Any]:
+        """Crea un campeonato con nombre y fecha de comienzo (para que se apunte la gente)."""
+        require_admin(user)
+        name = body.name.strip()
+        if not 1 <= len(name) <= 60:
+            raise HTTPException(422, "El nombre tiene que tener entre 1 y 60 letras")
+        if body.size not in champ_rules.SIZES:
+            raise HTTPException(422, "Un campeonato es de 8, 16 o 32 parejas")
+        if body.target not in (30, 40):
+            raise HTTPException(422, "Se juega a 30 o a 40 tantos")
+        starts = (
+            body.starts_at.astimezone(UTC).replace(tzinfo=None)
+            if body.starts_at.tzinfo
+            else body.starts_at
+        )
+        with db.session() as session:
+            champ = Championship(
+                name=name,
+                starts_at=starts,
+                size=body.size,
+                target=body.target,
+                signals=body.signals,
+            )
+            session.add(champ)
+            session.flush()
+            return champ_detail(session, champ, user)
+
+    @app.post("/api/admin/championships/{champ_id}/start")
+    def admin_start_championship(champ_id: int, user: CurrentUser) -> dict[str, Any]:
+        """Empieza ya, sin esperar a la fecha (las plazas libres son para parejas de bots)."""
+        require_admin(user)
+        with db.session() as session:
+            champ = find_championship(session, champ_id)
+            champ_call(lambda: champ_rules.start(session, champ, hub.rng, avatar_ids()))
+            return champ_detail(session, champ, user)
+
+    @app.post("/api/admin/championships/{champ_id}/matches/{match_id}/winner")
+    def admin_match_winner(
+        champ_id: int, match_id: int, body: WinnerIn, user: CurrentUser
+    ) -> dict[str, Any]:
+        """Da el partido a una pareja (p. ej. si la otra no se presenta)."""
+        require_admin(user)
+        with db.session() as session:
+            champ = find_championship(session, champ_id)
+
+            def award() -> None:
+                match = champ_rules.match_of(champ, match_id)
+                champ_rules.record(champ, match, body.team_id, None, hub.rng, walkover=True)
+
+            champ_call(award)
+            return champ_detail(session, champ, user)
+
+    @app.delete("/api/admin/championships/{champ_id}")
+    def admin_delete_championship(champ_id: int, user: CurrentUser) -> dict[str, bool]:
+        require_admin(user)
+        with db.session() as session:
+            session.delete(find_championship(session, champ_id))
+        return {"ok": True}
 
     # --- Salas ---------------------------------------------------------------------------
 
