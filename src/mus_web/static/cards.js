@@ -2,7 +2,8 @@
 // Baraja española dibujada en SVG (sin imágenes externas). Si existen imágenes en
 // static/cards/<código>.png (p. ej. 12O.png), la web las usa en su lugar.
 //   MusCards.svg(code, {mini})  → elemento <svg> del naipe
-//   MusCards.back({mini})       → reverso
+//   MusCards.back({mini, brand, color, image}) → reverso (con la publicidad)
+//   MusCards.drink({drink, brand, color, image}) → consumición de la mesa
 (function () {
   const NS = "http://www.w3.org/2000/svg";
   let uid = 0;
@@ -180,16 +181,66 @@
     return card;
   }
 
+  // Reverso: color, marca o imagen del patrocinador (publicidad que elige el administrador).
   function back(opts = {}) {
+    const color = opts.color || "#9d1f26";
     const card = el("svg", { viewBox: "0 0 200 300", class: "naipe back" + (opts.mini ? " mini" : ""), role: "img" });
-    el("rect", { x: 2, y: 2, width: 196, height: 296, rx: 16, fill: "#9d1f26", stroke: "#fff4dd", "stroke-width": 6 }, card);
+    el("rect", { x: 2, y: 2, width: 196, height: 296, rx: 16, fill: color, stroke: "#fff4dd", "stroke-width": 6 }, card);
     el("rect", { x: 16, y: 16, width: 168, height: 268, rx: 10, fill: "none", stroke: "#e8b923", "stroke-width": 3 }, card);
-    for (let i = 0; i < 6; i++) el("path", { d: `M16,${40 + i * 44} L184,${18 + i * 44}`, stroke: "#b8323a", "stroke-width": 10 }, card);
-    el("ellipse", { cx: 100, cy: 150, rx: 62, ry: 34, fill: "#9d1f26", stroke: "#e8b923", "stroke-width": 4 }, card);
-    const t = el("text", { x: 100, y: 160, "text-anchor": "middle", "font-family": "Georgia, serif", "font-weight": "800", "font-size": 28, fill: "#e8b923" }, card);
-    t.textContent = "MUS.ST";
+    for (let i = 0; i < 6; i++) el("path", { d: `M16,${40 + i * 44} L184,${18 + i * 44}`, stroke: "#ffffff", "stroke-opacity": 0.14, "stroke-width": 10 }, card);
+    if (opts.image) {
+      el("rect", { x: 26, y: 88, width: 148, height: 124, rx: 12, fill: "#fffdf6", stroke: "#e8b923", "stroke-width": 4 }, card);
+      el("image", { href: opts.image, x: 32, y: 94, width: 136, height: 112, preserveAspectRatio: "xMidYMid meet" }, card);
+      return card;
+    }
+    const brand = opts.brand || "MUS.ST";
+    el("ellipse", { cx: 100, cy: 150, rx: 78, ry: 40, fill: color, stroke: "#e8b923", "stroke-width": 4 }, card);
+    const size = Math.max(14, Math.min(30, Math.floor(260 / Math.max(brand.length, 1))));
+    const t = el("text", { x: 100, y: 150 + size * 0.35, "text-anchor": "middle", "font-family": "Georgia, serif", "font-weight": "800", "font-size": size, fill: "#e8b923" }, card);
+    t.textContent = brand;
     return card;
   }
 
-  window.MusCards = { svg, back };
+  // Consumición junto a las cartas (publicidad): cerveza, refresco, café o agua con su marca.
+  function drink(opts = {}) {
+    const kind = opts.drink || "cerveza";
+    const color = opts.color || "#c8102e";
+    const svg = el("svg", { viewBox: "0 0 60 100", class: "drink", role: "img", "aria-label": `${kind}${opts.brand ? " " + opts.brand : ""}` });
+    const label = (x, y, w, h, rotate) => {
+      if (opts.image) { el("image", { href: opts.image, x, y, width: w, height: h, preserveAspectRatio: "xMidYMid meet" }, svg); return; }
+      if (!opts.brand) return;
+      const size = Math.max(6, Math.min(12, Math.floor((rotate ? h : w) * 1.6 / opts.brand.length)));
+      const t = el("text", { x: x + w / 2, y: y + h / 2 + size * 0.35, "text-anchor": "middle", "font-family": "system-ui, sans-serif", "font-weight": "800", "font-size": size, fill: "#fff" }, svg);
+      if (rotate) t.setAttribute("transform", `rotate(-90 ${x + w / 2} ${y + h / 2})`);
+      t.textContent = opts.brand;
+    };
+    if (kind === "cerveza") {
+      el("path", { d: "M10,22 L50,22 L46,94 L14,94 Z", fill: "#f2a516", stroke: "#fff", "stroke-opacity": 0.7, "stroke-width": 2 }, svg);
+      el("path", { d: "M8,24 C6,12 18,8 24,12 C28,4 40,6 42,12 C50,8 56,16 52,24 Z", fill: "#fffbea" }, svg);
+      for (const [cx, cy] of [[22, 50], [36, 64], [28, 78], [40, 44]]) el("circle", { cx, cy, r: 1.6, fill: "#fff6c8" }, svg);
+      el("rect", { x: 15, y: 54, width: 30, height: 22, rx: 3, fill: color }, svg);
+      label(16, 55, 28, 20, false);
+    } else if (kind === "refresco") {
+      el("rect", { x: 12, y: 12, width: 36, height: 84, rx: 8, fill: color, stroke: "#fff", "stroke-opacity": 0.5, "stroke-width": 2 }, svg);
+      el("rect", { x: 14, y: 8, width: 32, height: 8, rx: 3, fill: "#c9c9c9" }, svg);
+      el("rect", { x: 16, y: 20, width: 6, height: 70, rx: 3, fill: "#fff", opacity: 0.18 }, svg);
+      label(18, 22, 24, 66, true);
+    } else if (kind === "cafe") {
+      el("path", { d: "M10,52 L44,52 L40,86 L14,86 Z", fill: "#fffdf6", stroke: "#6b4a2a", "stroke-width": 2 }, svg);
+      el("path", { d: "M44,58 C56,58 56,76 42,76", fill: "none", stroke: "#fffdf6", "stroke-width": 4 }, svg);
+      el("ellipse", { cx: 27, cy: 53, rx: 16, ry: 3, fill: "#5a3418" }, svg);
+      el("ellipse", { cx: 28, cy: 90, rx: 26, ry: 5, fill: "#fffdf6", stroke: "#6b4a2a" }, svg);
+      for (const x of [20, 28, 36]) el("path", { d: `M${x},46 c-4,-8 4,-10 0,-18`, fill: "none", stroke: "#fff", "stroke-opacity": 0.6, "stroke-width": 2 }, svg);
+      el("rect", { x: 15, y: 62, width: 24, height: 16, rx: 2, fill: color }, svg);
+      label(15, 62, 24, 16, false);
+    } else {
+      el("path", { d: "M24,4 L36,4 L36,16 C48,24 48,30 48,40 L48,94 L12,94 L12,40 C12,30 12,24 24,16 Z", fill: "#cfe9ff", "fill-opacity": 0.85, stroke: "#fff", "stroke-width": 2 }, svg);
+      el("rect", { x: 22, y: 0, width: 16, height: 6, rx: 2, fill: color }, svg);
+      el("rect", { x: 12, y: 50, width: 36, height: 26, fill: color }, svg);
+      label(13, 51, 34, 24, false);
+    }
+    return svg;
+  }
+
+  window.MusCards = { svg, back, drink };
 })();

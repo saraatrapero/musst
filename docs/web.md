@@ -219,3 +219,55 @@ permisos, ni se le borra (se hace en la configuración).
 API: `GET /api/admin/stats`, `GET /api/admin/users`, `GET|PATCH|DELETE
 /api/admin/users/{id}`, `POST /api/admin/users/{id}/logout` y `POST
 /api/admin/password`.
+
+### Recuperar una cuenta de administrador
+
+Si no se puede entrar con la cuenta de administrador, en Render se pone la variable
+`MUSST_RESET_PASSWORD` con el valor `usuario:contraseña nueva`. Al arrancar, el
+servidor pone esa contraseña a la cuenta (o la crea si no existe) y cierra sus
+sesiones. Después de entrar hay que **borrar la variable**, para no dejar la
+contraseña escrita en la configuración. Las contraseñas nunca se guardan en el código.
+
+Los usuarios normales no ven el panel ni pueden usar `/api/admin/*` (403); lo
+comprueba `test_normal_users_never_reach_admin`.
+
+## Publicidad en la mesa
+
+Desde la pestaña **📢 Publicidad** del panel, el administrador elige:
+
+- **Reverso de las cartas**: marca (texto), color y, si se quiere, un logo (PNG, JPEG
+  o WebP de hasta 290 KB). Las cartas de los bots son más grandes y se ven boca abajo
+  toda la jugada con ese reverso.
+- **Consumición junto a las cartas** de cada jugador: cerveza, refresco, café, agua o
+  ninguna, con marca, color de etiqueta y logo opcional.
+
+Se guarda en la tabla `site_settings` (`GET /api/ads`, `PUT /api/admin/ads`). Las
+imágenes van como `data:` URL validada (sólo PNG, JPEG o WebP), que la CSP ya permite.
+
+En la mesa, el marcador (tantos, amarracos y lo que falta) y la fase de la jugada van
+en la parte de arriba del tapete. En pantallas anchas, la barra de acciones se pone a
+la derecha del tapete, para que se vea la mesa entera sin desplazarse.
+
+## Campeonatos
+
+Eliminatorias de **8, 16 o 32 parejas** (como mínimo 8: cuartos de final, semifinales
+y final; con 16, también octavos). Lógica en `mus_web/championships.py`; tablas
+`championships`, `champ_teams` y `champ_matches`.
+
+1. El administrador crea el campeonato (pestaña **🏆 Campeonatos**): nombre, fecha y
+   hora de comienzo, número de parejas, a 30 o a 40, y con o sin señas.
+2. Hasta esa fecha, la gente se apunta desde el lobby con un nombre de pareja: con un
+   bot de compañero (elige el personaje) o con una plaza libre para otra persona, que
+   se une con «Unirme como compañero». Cada persona, en una sola pareja.
+3. Al llegar la fecha (o con «Empezar ya»), se cierra la inscripción, las plazas libres
+   se llenan con parejas de bots y se sortea el cuadro. Si una pareja buscaba compañero
+   y no lo encontró, juega con un bot.
+4. Los partidos entre parejas de bots se juegan solos en el servidor. En los demás,
+   cada persona pulsa «Jugar mi partido» en el cuadro. La pareja A se sienta en los
+   asientos 0 y 2, la B en 1 y 3, y los bots ocupan los sitios que falten. Si sólo
+   juega una persona, la partida empieza al momento. Si juegan personas de las dos
+   parejas, empieza cuando están todas.
+5. Al acabar, la pareja ganadora pasa a la ronda siguiente. Si una pareja no se
+   presenta, el administrador puede dar el partido a la otra desde el cuadro.
+
+Si alguien borra su cuenta, su sitio en la pareja lo ocupa un bot.

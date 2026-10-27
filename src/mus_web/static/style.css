@@ -366,3 +366,84 @@ table.users .actions button { padding: 4px 8px; font-size: .85rem; }
 .citrack .half { position: absolute; left: 50%; top: -3px; bottom: -3px; width: 2px; background: var(--muted); }
 .citrack .ci { position: absolute; top: 3px; height: 8px; background: var(--felt); opacity: .45; border-radius: 4px; }
 .citrack .dot { position: absolute; top: 1px; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; background: var(--felt-dark); border: 2px solid var(--panel); }
+
+/* ===== Mesa con publicidad: cartas de los bots grandes, consumición y marcador arriba ===== */
+/* El marcador y la fase van en la parte de arriba del tapete (gana espacio a la pantalla). */
+body.playing .table { grid-template-areas: "score score score" ". top ." "left center right" ". bottom ."; grid-template-rows: auto auto 1fr auto; min-height: 0; padding-top: 14px; }
+.table > .gamehead { grid-area: score; margin: 0 auto; width: min(100%, 860px); grid-template-columns: minmax(0,1fr) auto minmax(0,1fr); gap: 8px; }
+.table > .gamehead .teambox { flex-direction: row; flex-wrap: nowrap; align-items: center; gap: 8px; padding: 5px 12px; min-width: 0; background: rgba(20,12,8,.72); }
+.table > .gamehead .teambox .big { font-size: 1.35rem; line-height: 1; white-space: nowrap; }
+.table > .gamehead .teambox .tname { white-space: nowrap; }
+.table > .gamehead .teambox .stonepile { flex-wrap: wrap; gap: 3px; min-height: 0; flex: 1 1 auto; min-width: 0; }
+.table > .gamehead .teambox.theirs { flex-direction: row-reverse; }
+.table > .gamehead .teambox.theirs .stonepile { justify-content: flex-end; }
+.table > .gamehead .teambox .amarraco { width: 18px; height: 18px; } .table > .gamehead .teambox .piedra { width: 10px; height: 10px; }
+.table > .gamehead .faltan { font-size: .75rem; white-space: nowrap; margin: 0; }
+.table > .gamehead .lancepill { padding: 6px 14px; }
+.card.bot { width: clamp(46px, 6vw, 74px); height: clamp(69px, 9vw, 111px); }
+.seat .cards:not(.mine) .card.bot + .card.bot { margin-left: clamp(-18px, -1.2vw, -6px); }
+.seat.seat .cards.shown { max-width: none; gap: 4px; }
+.seat.seat .cards.shown .card.bot { margin-left: 0; }
+.drinkbox { display: inline-flex; align-self: flex-end; }
+.drinkbox svg.drink { width: clamp(28px, 3.4vw, 44px); height: clamp(46px, 5.6vw, 72px); filter: drop-shadow(0 4px 4px rgba(0,0,0,.5)); }
+.hand-row { flex-wrap: nowrap; }
+@media (max-width: 700px) {
+  body.playing .table { grid-template-areas: "score score" "top top" "left right" "center center" "bottom bottom"; grid-template-rows: none; }
+  .table > .gamehead { grid-template-columns: 1fr 1fr; }
+  .table > .gamehead .lancepill { grid-column: 1 / -1; grid-row: 1; padding: 4px 10px; }
+  .table > .gamehead .teambox { padding: 4px 8px; gap: 5px; flex-wrap: wrap; }
+  .table > .gamehead .teambox.theirs { flex-direction: row; justify-content: flex-end; }
+  .table > .gamehead .teambox .big { font-size: 1.1rem; }
+  .card.bot { width: 34px; height: 51px; }
+  .seat .cards:not(.mine) .card.bot + .card.bot { margin-left: -10px; }
+  .seat.seat .cards.shown { gap: 2px; }
+  .hand-row { gap: 4px; }
+  .drinkbox svg.drink { width: 22px; height: 38px; }
+}
+/* Que quepa en una pantalla de portátil sin que la barra de acciones tape tus cartas */
+@media (min-width: 701px) {
+  .cards.mine .card { width: clamp(70px, 7.4vw, 100px); height: clamp(105px, 11.1vw, 150px); }
+  .card.bot { width: clamp(46px, 5vw, 66px); height: clamp(69px, 7.5vw, 99px); }
+  body.playing .table { gap: 4px; padding-bottom: 10px; }
+}
+/* Pantallas anchas: la barra de acciones a la derecha del tapete, así se ve la mesa entera */
+@media (min-width: 1150px) {
+  body.playing main { max-width: 1480px; }
+  .playarea { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 14px; align-items: start; }
+  .playarea .actionbar { position: sticky; top: 12px; bottom: auto; }
+  .playarea .actionbar .buttons { grid-template-columns: 1fr; }
+  .playarea .actionbar .buttons:has(> :nth-child(3)) { grid-template-columns: 1fr 1fr; }
+}
+/* Panel de publicidad */
+.felt-mini { background: radial-gradient(ellipse at center, #2f8a57 0%, #1f6a41 70%); border-radius: 24px; padding: 24px; }
+.adpreview { display: flex; align-items: flex-end; justify-content: center; gap: 10px; }
+.adpreview .card.bot { width: 110px; height: 165px; }
+.adpreview .drinkbox.big svg.drink { width: 70px; height: 116px; }
+.adimage { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+input[type=color] { width: 64px; height: 36px; border: 1px solid var(--line); border-radius: 8px; background: none; padding: 2px; }
+
+/* ===== Campeonatos ===== */
+.champlist { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+.champcard { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; text-align: left; background: var(--bg); color: var(--ink); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin: 0; }
+.champcard.inscripcion { border-color: var(--felt); box-shadow: inset 4px 0 0 var(--felt); }
+.champcard.en_juego { box-shadow: inset 4px 0 0 var(--gold); }
+.signup { border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin: 10px 0; background: var(--bg); }
+.signup .seg { margin: 8px 0; }
+ul.teams { padding-left: 18px; } ul.teams li { margin: 4px 0; }
+ul.teams li button { margin-left: 8px; }
+.bracket { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(210px, 1fr); gap: 14px; padding: 6px 0 10px; }
+.bracket .round { display: flex; flex-direction: column; justify-content: space-around; gap: 10px; }
+.bracket .round h4 { margin: 0 0 4px; text-align: center; color: var(--muted); }
+.match { border: 1px solid var(--line); border-radius: 10px; background: var(--bg); overflow: hidden; }
+.match.mine { border: 2px solid var(--gold); box-shadow: 0 0 12px rgba(212,160,23,.35); }
+.match .side { display: flex; justify-content: space-between; gap: 6px; padding: 6px 10px; font-size: .9rem; }
+.match .side + .side { border-top: 1px solid var(--line); }
+.match .side.won { font-weight: 800; background: rgba(31,111,74,.14); }
+.match .side.lost { color: var(--muted); text-decoration: line-through; }
+.match .side.me span { color: var(--felt); font-weight: 700; }
+.match .side.tbd { color: var(--muted); font-style: italic; }
+.match > button, .match > small { display: block; margin: 6px 10px 8px; }
+.match .adminwin { padding: 4px 10px 8px; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+button.small.go { background: var(--felt); border-color: var(--felt-dark); color: #fff; }
+input[type=datetime-local] { width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font-size: 1rem; }
+.match .adminwin button.small.secondary { background: var(--panel); color: var(--ink); border-color: var(--line); }

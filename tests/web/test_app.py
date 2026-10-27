@@ -698,3 +698,67 @@ def test_admin_closes_sessions_and_deletes_users() -> None:
         assert [u["username"] for u in client.get("/api/admin/users").json()] == ["sara"]
         (game,) = client.get("/api/admin/stats").json()["recent_games"]
         assert app_module.DELETED_NAME in [p["name"] for p in game["players"]]
+
+
+def test_reset_password_from_settings() -> None:
+    settings = fast_settings(reset_password="sara:nuevaclave1", admins=frozenset({"sara"}))
+    with TestClient(create_app(settings)) as client:  # crea la cuenta que no existía
+        login = {"username": "sara", "password": "nuevaclave1"}
+        assert client.post("/api/login", json=login).status_code == 200
+        assert client.get("/api/me").json()["admin"] is True
+        db = client.app.state.hub.db  # type: ignore[attr-defined]
+        settings.reset_password = "sara:otraclave22"
+        app_module.reset_account(db, settings)  # y a una que ya existe le cambia la clave
+        assert client.get("/api/me").status_code == 401  # sus sesiones se cierran
+        assert client.post("/api/login", json=login).status_code == 401
+        login["password"] = "otraclave22"
+        assert client.post("/api/login", json=login).status_code == 200
+    with TestClient(create_app(fast_settings(reset_password="sara:corta"))) as client:
+        login = {"username": "sara", "password": "corta"}  # arranca, pero no crea nada
+        assert client.post("/api/login", json=login).status_code == 401
+
+
+def test_normal_users_never_reach_admin(client: TestClient) -> None:
+    register(client, "pepe")
+    assert client.get("/api/me").json()["admin"] is False
+    for method, path in [
+        ("GET", "/api/admin/stats"),
+        ("GET", "/api/admin/users"),
+        ("GET", "/api/admin/users/1"),
+        ("PATCH", "/api/admin/users/1"),
+        ("DELETE", "/api/admin/users/1"),
+        ("POST", "/api/admin/users/1/logout"),
+        ("POST", "/api/admin/password"),
+    ]:
+        body = {"username": "pepe", "password": "otraclave1"}
+        assert client.request(method, path, json=body).status_code == 403, path
+
+
+def test_ads_are_set_by_admins_only() -> None:
+    tiny_png = "data:image/png;base64,iVBORw0KGgo="
+    with admin_client() as client:
+        assert client.get("/api/ads").json() == app_module.DEFAULT_ADS
+        register(client, "pepe")
+        ads = {"card_brand": "Bar Pepe", "drink": "refresco", "drink_brand": "Cola"}
+        assert client.put("/api/admin/ads", json=ads).status_code == 403
+        client.post("/api/logout")
+        register(client, "sara")
+        saved = client.put("/api/admin/ads", json=ads | {"card_image": tiny_png}).json()
+        assert saved["card_brand"] == "Bar Pepe"
+        assert saved["card_image"] == tiny_png
+        assert client.get("/api/ads").json() == saved
+        again = client.put("/api/admin/ads", json={"card_brand": " Otra "}).json()
+        assert again["card_brand"] == "Otra"
+        assert again["drink"] == "cerveza"
+        for bad in [
+            {"card_brand": ""},
+            {"card_brand": "x" * 25},
+            {"drink_brand": "x" * 25},
+            {"card_color": "rojo"},
+            {"drink_color": "#12345"},
+            {"drink": "whisky"},
+            {"card_image": "javascript:alert(1)"},
+            {"drink_image": "data:image/svg+xml;base64,PHN2Zz4="},
+            {"card_image": "data:image/png;base64," + "A" * app_module.MAX_AD_IMAGE},
+        ]:
+            assert client.put("/api/admin/ads", json=bad).status_code == 422, bad

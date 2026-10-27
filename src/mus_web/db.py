@@ -86,6 +86,16 @@ class AdminRow(Base):
     granted_at: Mapped[datetime] = mapped_column(default=utcnow)
 
 
+class SiteSetting(Base):
+    """Ajustes de la web que cambia un administrador (p. ej. la publicidad), en JSON."""
+
+    __tablename__ = "site_settings"
+
+    key: Mapped[str] = mapped_column(String(40), primary_key=True)
+    value: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    updated_at: Mapped[datetime] = mapped_column(default=utcnow, onupdate=utcnow)
+
+
 class LoginSession(Base):
     __tablename__ = "login_sessions"
 
@@ -130,6 +140,77 @@ class GameSeat(Base):
 
     game: Mapped[GameRow] = relationship(back_populates="seats")
     user: Mapped[User | None] = relationship(back_populates="seats")
+
+
+class Championship(Base):
+    """Campeonato por eliminatorias (8, 16 o 32 parejas): cuartos, semifinales y final.
+
+    ``status``: ``inscripcion`` (se apunta la gente), ``en_juego`` o ``terminado``.
+    """
+
+    __tablename__ = "championships"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(60))
+    starts_at: Mapped[datetime]
+    size: Mapped[int]
+    target: Mapped[int] = mapped_column(default=40)
+    signals: Mapped[bool] = mapped_column(default=False)
+    status: Mapped[str] = mapped_column(String(12), default="inscripcion")
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+    winner_team_id: Mapped[int | None]
+
+    teams: Mapped[list[ChampTeam]] = relationship(
+        back_populates="championship", cascade="all, delete-orphan", order_by="ChampTeam.id"
+    )
+    matches: Mapped[list[ChampMatch]] = relationship(
+        back_populates="championship",
+        cascade="all, delete-orphan",
+        order_by="(ChampMatch.round, ChampMatch.slot)",
+    )
+
+
+class ChampTeam(Base):
+    """Una pareja apuntada: una persona con un bot de compañero, dos personas, o (para
+    completar el cuadro) dos bots. ``partner_open``: busca compañero persona."""
+
+    __tablename__ = "champ_teams"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    championship_id: Mapped[int] = mapped_column(
+        ForeignKey("championships.id", ondelete="CASCADE"), index=True
+    )
+    name: Mapped[str] = mapped_column(String(30))
+    # Si una persona borra su cuenta, su sitio en la pareja lo ocupa un bot.
+    captain_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    partner_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    partner_open: Mapped[bool] = mapped_column(default=False)
+    # Avatares de los bots de la pareja (el compañero bot, o los dos de una pareja de bots).
+    bot_avatars: Mapped[list[str]] = mapped_column(JSON, default=list)
+
+    championship: Mapped[Championship] = relationship(back_populates="teams")
+
+
+class ChampMatch(Base):
+    """Un partido del cuadro: ronda (1 = la primera) y posición en ella."""
+
+    __tablename__ = "champ_matches"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    championship_id: Mapped[int] = mapped_column(
+        ForeignKey("championships.id", ondelete="CASCADE"), index=True
+    )
+    round: Mapped[int]
+    slot: Mapped[int]
+    team_a_id: Mapped[int | None] = mapped_column(ForeignKey("champ_teams.id"))
+    team_b_id: Mapped[int | None] = mapped_column(ForeignKey("champ_teams.id"))
+    winner_team_id: Mapped[int | None] = mapped_column(ForeignKey("champ_teams.id"))
+    score: Mapped[list[int] | None] = mapped_column(JSON)
+    game_id: Mapped[int | None] = mapped_column(ForeignKey("games.id", ondelete="SET NULL"))
+    walkover: Mapped[bool] = mapped_column(default=False)  # lo decidió un administrador
+    played_at: Mapped[datetime | None]
+
+    championship: Mapped[Championship] = relationship(back_populates="matches")
 
 
 class Database:

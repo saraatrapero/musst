@@ -9,6 +9,8 @@ Modos (``docs/ai-design.md`` §5ter):
 - ``con_bot``: tú y un bot de compañero contra dos bots.
 - ``dos_humanos``: dos personas (pareja) contra dos bots.
 - ``cuatro``: cuatro personas, sin bots.
+- ``campeonato``: un partido de campeonato; cada persona tiene su asiento reservado y
+  los bots ocupan el resto (``mus_web.championships``).
 """
 
 from __future__ import annotations
@@ -38,12 +40,14 @@ class Mode(Enum):
     CON_BOT = "con_bot"
     DOS_HUMANOS = "dos_humanos"
     CUATRO = "cuatro"
+    CAMPEONATO = "campeonato"
 
 
 HUMAN_SEATS: dict[Mode, tuple[SeatId, ...]] = {
     Mode.CON_BOT: (SeatId(0),),
     Mode.DOS_HUMANOS: (SeatId(0), SeatId(2)),  # compañeros: asientos enfrentados
     Mode.CUATRO: ALL_SEATS,
+    Mode.CAMPEONATO: (),  # los asientos los reserva el partido (``Room.reserved``)
 }
 
 # Nivel de los bots de la sala (docs/ai-design.md §4).
@@ -94,6 +98,12 @@ class Room:
     partner: str | None = None
     rivals: tuple[str, str] | None = None
     tournament_round: int = 0  # 1-3 en un torneo; 0 en partida suelta
+    # Partido de campeonato: asiento de cada persona, avatares de los bots y nombres.
+    reserved: dict[int, SeatId] = field(default_factory=dict)
+    bot_avatars: dict[SeatId, str] = field(default_factory=dict)
+    champ_match_id: int | None = None
+    championship_id: int | None = None
+    team_names: tuple[str, str] | None = None
     # Cada jugada se reparte cuando una persona pulsa «Repartir» (así ve el reparto y
     # tiene tiempo de leer la puntuación de la anterior). Los bots esperan.
     wait_for_deal: bool = True
@@ -106,6 +116,8 @@ class Room:
 
     @property
     def human_seats(self) -> tuple[SeatId, ...]:
+        if self.reserved:
+            return tuple(sorted(self.reserved.values()))
         return HUMAN_SEATS[self.mode]
 
     @property
@@ -134,6 +146,12 @@ class Room:
             return current
         if self.started:
             raise RoomError("La partida ya ha empezado")
+        if self.reserved:
+            if user_id not in self.reserved:
+                raise RoomError("Este partido es de otras parejas")
+            seat = self.reserved[user_id]
+            self.seats[seat] = Occupant(name, avatar, user_id=user_id)
+            return seat
         for seat in self.human_seats:
             if self.seats[seat] is None:
                 self.seats[seat] = Occupant(name, avatar, user_id=user_id)
@@ -157,7 +175,7 @@ class Room:
     ) -> None:
         """Empieza la partida. ``profiles``: perfil guardado de cada usuario (por id),
         que reciben los bots para jugar contra cada persona según cómo juega."""
-        if user_id != self.host_id:
+        if user_id != self.host_id and user_id not in self.reserved:
             raise RoomError("Sólo quien creó la sala puede empezar")
         if self.started:
             raise RoomError("La partida ya ha empezado")
@@ -198,9 +216,16 @@ class Room:
 
     def _chosen_avatars(self, taken: set[str]) -> dict[SeatId, Avatar]:
         """Compañero y rivales elegidos (sólo con un humano: asientos 2, 1 y 3)."""
+        by_id = {a.id: a for a in self.avatars}
+        if self.bot_avatars:  # partido de campeonato: los de cada pareja (sin repetir)
+            chosen: dict[SeatId, Avatar] = {}
+            for seat, avatar_id in self.bot_avatars.items():
+                if avatar_id in by_id and avatar_id not in taken:
+                    chosen[seat] = by_id[avatar_id]
+                    taken = taken | {avatar_id}
+            return chosen
         if self.human_seats != (SeatId(0),):
             return {}
-        by_id = {a.id: a for a in self.avatars}
         wanted = {SeatId(2): self.partner}
         if self.rivals is not None:
             wanted |= {SeatId(1): self.rivals[0], SeatId(3): self.rivals[1]}
@@ -321,6 +346,8 @@ class Room:
             "level": self.level,
             "target": self.target,
             "tournament_round": self.tournament_round,
+            "championship_id": self.championship_id,
+            "team_names": None if self.team_names is None else list(self.team_names),
             "host_id": self.host_id,
             "started": self.started,
             "finished": self.finished,

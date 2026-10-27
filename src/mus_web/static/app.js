@@ -6,7 +6,16 @@ const state = {
   me: null, avatars: [], notice: "", room: null, view: null, ws: null, selected: new Set(), bubbles: {},
   lastPhrase: 0, quiet: false, summarySeen: 0, phraseLog: [], deckImages: [],
   dealing: null, dealtShown: 0, voice: readPref("voz", true), signalsOpen: false, lastCall: null,
+  ads: { card_brand: "MUS.ST", card_color: "#9d1f26", card_image: null, drink: "cerveza", drink_brand: "", drink_color: "#c8102e", drink_image: null },
 };
+
+// Publicidad de la mesa (la elige un administrador): reverso de las cartas y consumición.
+function adBack(mini) { const a = state.ads; return MusCards.back({ mini, brand: a.card_brand, color: a.card_color, image: a.card_image }); }
+function adDrink() {
+  const a = state.ads;
+  if (a.drink === "ninguna") return null;
+  return h("span", { class: "drinkbox", title: a.drink_brand || a.drink }, MusCards.drink({ drink: a.drink, brand: a.drink_brand, color: a.drink_color, image: a.drink_image }));
+}
 
 function readPref(key, fallback) {
   try { const v = localStorage.getItem(key); return v === null ? fallback : v === "1"; } catch (e) { return fallback; }
@@ -87,7 +96,7 @@ const SUITS = { O: "oros", C: "copas", E: "espadas", B: "bastos" };
 const FIGURES = { 1: "As", 10: "Sota", 11: "Caballo", 12: "Rey" };
 const LANCES = { grande: "Grande", chica: "Chica", pares: "Pares", juego: "Juego", punto: "Punto" };
 const PHASES = { mus_decision: "¿Mus?", discard: "Descartes", lance: "Lances", game_over: "Fin de la partida" };
-const MODES = { con_bot: "Tú + bot contra 2 bots", dos_humanos: "2 personas contra 2 bots", cuatro: "4 personas" };
+const MODES = { con_bot: "Tú + bot contra 2 bots", dos_humanos: "2 personas contra 2 bots", cuatro: "4 personas", campeonato: "Partido de campeonato" };
 const SIGNALS = {
   dos_reyes: "Dos reyes", dos_ases: "Dos ases", pares: "Pares", medias_reyes: "Tres reyes",
   medias_ases: "Tres ases", medias: "Medias", duples: "Duples", juego: "Juego",
@@ -382,6 +391,7 @@ async function lobby() {
         avatarPicker(me.avatar, async (id) => { state.me = await api("PUT", "/api/me/avatar", { avatar: id }); lobby(); }),
         h("button", { class: "secondary", onclick: exportData }, "Descargar mis datos"),
         h("button", { class: "danger", onclick: deleteAccount }, "Borrar mi cuenta"))),
+    championshipsPanel(),
     me.admin && h("section", { class: "panel admin" }, h("h2", {}, "🛠️ Administración"),
       h("p", { class: "muted" }, "Usuarios (ver, editar, borrar), estadísticas y cómo les va a los bots."),
       h("button", { onclick: () => adminScreen() }, "Abrir el panel de administración")),
@@ -487,7 +497,7 @@ async function adminScreen(tab = "resumen") {
   closeSocket();
   document.body.classList.remove("playing");
   renderWho();
-  const tabs = [["resumen", "📊 Resumen"], ["usuarios", "👥 Usuarios"], ["partidas", "🃏 Partidas"], ["bots", "🤖 Bots"]];
+  const tabs = [["resumen", "📊 Resumen"], ["usuarios", "👥 Usuarios"], ["partidas", "🃏 Partidas"], ["bots", "🤖 Bots"], ["publicidad", "📢 Publicidad"], ["campeonatos", "🏆 Campeonatos"]];
   const body = h("div", {}, h("p", { class: "muted" }, "Cargando…"));
   mount(h("section", { class: "panel admin" },
     h("div", { class: "adminhead" }, h("h2", {}, "🛠️ Administración"),
@@ -496,6 +506,8 @@ async function adminScreen(tab = "resumen") {
     segmented(tabs, tab, (v) => adminScreen(v)), body));
   try {
     if (tab === "usuarios") return body.replaceChildren(await adminUsers());
+    if (tab === "publicidad") return body.replaceChildren(await adminAds());
+    if (tab === "campeonatos") return body.replaceChildren(await adminChampionships());
     const s = await api("GET", "/api/admin/stats");
     if (tab === "partidas") return body.replaceChildren(h("h3", {}, "Últimas 20 partidas"), gamesTable(s.recent_games));
     if (tab === "bots") return body.replaceChildren(adminBots(s));
@@ -616,10 +628,206 @@ function editUser(u, box) {
     h("button", { onclick: save }, "Guardar"), h("button", { class: "secondary", onclick: () => box.replaceChildren() }, "Cancelar"), msg));
 }
 
+// Publicidad: marca del reverso de las cartas y consumición junto a cada jugador.
+const DRINK_NAMES = { cerveza: "🍺 Cerveza", refresco: "🥤 Refresco", cafe: "☕ Café", agua: "💧 Agua", ninguna: "Ninguna" };
+
+async function adminAds() {
+  const ads = await api("GET", "/api/ads");
+  const form = { ...ads };
+  const preview = h("div", { class: "adpreview" });
+  const paint = () => {
+    const back = MusCards.back({ brand: form.card_brand, color: form.card_color, image: form.card_image });
+    const drink = form.drink === "ninguna" ? h("span", { class: "muted" }, "Sin consumición")
+      : MusCards.drink({ drink: form.drink, brand: form.drink_brand, color: form.drink_color, image: form.drink_image });
+    preview.replaceChildren(h("span", { class: "card bot" }, back), h("span", { class: "card bot" }, MusCards.back({ brand: form.card_brand, color: form.card_color, image: form.card_image })),
+      h("span", { class: "drinkbox big" }, drink));
+  };
+  const text = (key, max) => { const i = h("input", { type: "text", maxlength: max, value: form[key] || "" }); i.addEventListener("input", () => { form[key] = i.value; paint(); }); return i; };
+  const color = (key) => { const i = h("input", { type: "color", value: form[key] }); i.addEventListener("input", () => { form[key] = i.value; paint(); }); return i; };
+  const msg = h("p", { class: "muted" });
+  const image = (key) => {
+    const input = h("input", { type: "file", accept: "image/png,image/jpeg,image/webp" });
+    input.addEventListener("change", () => {
+      const file = input.files[0];
+      if (!file) return;
+      if (file.size > 290 * 1024) { msg.textContent = "La imagen pesa demasiado: máximo 290 KB."; input.value = ""; return; }
+      const reader = new FileReader();
+      reader.onload = () => { form[key] = reader.result; paint(); };
+      reader.readAsDataURL(file);
+    });
+    return h("div", { class: "adimage" }, input, h("button", { class: "secondary", onclick: () => { form[key] = null; input.value = ""; paint(); } }, "Quitar imagen"));
+  };
+  const drink = h("select", {}, Object.entries(DRINK_NAMES).map(([k, v]) => h("option", { value: k, selected: k === form.drink }, v)));
+  drink.addEventListener("change", () => { form.drink = drink.value; paint(); });
+  const save = async () => {
+    try { state.ads = await api("PUT", "/api/admin/ads", form); msg.textContent = "✔ Guardado: ya se ve en todas las mesas nuevas."; }
+    catch (e) { msg.textContent = e.message; }
+  };
+  paint();
+  return h("div", { class: "grid2" },
+    h("div", {},
+      h("h3", {}, "Reverso de las cartas"),
+      h("label", {}, "Marca (texto en el centro)"), text("card_brand", 24),
+      h("label", {}, "Color"), color("card_color"),
+      h("label", {}, "Logo (opcional; sustituye al texto)"), image("card_image"),
+      h("h3", {}, "Consumición junto a las cartas"),
+      h("label", {}, "Tipo"), drink,
+      h("label", {}, "Marca (en la etiqueta)"), text("drink_brand", 24),
+      h("label", {}, "Color de la etiqueta"), color("drink_color"),
+      h("label", {}, "Logo de la etiqueta (opcional)"), image("drink_image"),
+      h("button", { onclick: save }, "Guardar publicidad"), msg),
+    h("div", {}, h("h3", {}, "Así se ve en la mesa"), h("div", { class: "felt-mini" }, preview),
+      h("p", { class: "muted" }, "Las cartas de los bots se ven boca abajo durante toda la jugada con este reverso, y cada jugador tiene su consumición al lado. Imágenes PNG, JPEG o WebP de hasta 290 KB; mejor con fondo transparente.")));
+}
+
 async function removeUser(u) {
   if (!confirm(`¿Borrar la cuenta de ${u.username}? Se borran su perfil y sus sesiones, y su nombre desaparece de las partidas. No se puede deshacer.`)) return;
   try { await api("DELETE", `/api/admin/users/${u.id}`); adminScreen("usuarios"); }
   catch (e) { alert(e.message); }
+}
+
+// --- Campeonatos ----------------------------------------------------------------------------
+// Eliminatorias de 8, 16 o 32 parejas con nombre y fecha de comienzo: la gente se apunta
+// (con un bot de compañero o con otra persona) y al llegar la fecha se sortea el cuadro.
+
+const CHAMP_STATUS = { inscripcion: "Inscripción abierta", en_juego: "En juego", terminado: "Terminado" };
+const when = (iso) => new Date(iso + "Z").toLocaleString(undefined, { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+
+function championshipsPanel() {
+  const box = h("section", { class: "panel champs" }, h("h2", {}, "🏆 Campeonatos"), h("p", { class: "muted" }, "Cargando…"));
+  api("GET", "/api/championships").then((list) => {
+    const rows = list.filter((c) => c.status !== "terminado").concat(list.filter((c) => c.status === "terminado").slice(0, 3));
+    box.replaceChildren(h("h2", {}, "🏆 Campeonatos"),
+      rows.length ? h("div", { class: "champlist" }, rows.map((c) => h("button", { class: `champcard ${c.status}`, onclick: () => championshipScreen(c.id) },
+        h("b", {}, c.name),
+        h("span", {}, `${CHAMP_STATUS[c.status]}${c.status === "inscripcion" ? ` · empieza ${when(c.starts_at)}` : ""}`),
+        h("span", { class: "muted" }, `${c.teams}/${c.size} parejas · a ${c.target}${c.signals ? " · con señas" : ""}`),
+        c.champion && h("span", {}, `🥇 ${c.champion}`),
+        c.signed_up && h("span", { class: "badge" }, "Estás apuntado"))))
+        : h("p", { class: "muted" }, "No hay campeonatos todavía. Los organiza el administrador."));
+  }).catch((e) => box.replaceChildren(h("h2", {}, "🏆 Campeonatos"), h("p", { class: "error" }, e.message)));
+  return box;
+}
+
+async function championshipScreen(id) {
+  closeSocket();
+  document.body.classList.remove("playing");
+  renderWho();
+  const err = h("p", { class: "error" });
+  let c;
+  try { c = await api("GET", `/api/championships/${id}`); } catch (e) { return mount(h("section", { class: "panel" }, h("p", { class: "error" }, e.message), h("button", { onclick: () => lobby() }, "Volver"))); }
+  const act = async (method, path, body) => { try { await api(method, path, body); championshipScreen(id); } catch (e) { err.textContent = e.message; } };
+  const head = h("div", { class: "adminhead" }, h("h2", {}, `🏆 ${c.name}`),
+    h("button", { class: "secondary", onclick: () => lobby() }, "← Volver al lobby"),
+    h("button", { class: "secondary", onclick: () => championshipScreen(id) }, "↻ Actualizar"));
+  const info = h("p", {}, `${CHAMP_STATUS[c.status]} · ${c.status === "inscripcion" ? "empieza" : "empezó"} ${when(c.starts_at)} · ${c.teams}/${c.size} parejas · partidas a ${c.target} tantos${c.signals ? " · con señas" : ""}`);
+  const parts = [head, info];
+  if (c.champion) parts.push(h("div", { class: "banner mine" }, `🥇 Campeones: ${c.champion}`));
+  if (c.status === "inscripcion") parts.push(signUpBox(c, act), teamsBox(c, act));
+  else parts.push(bracket(c, act), teamsBox(c, act));
+  if (state.me.admin && c.status === "inscripcion") parts.push(h("p", {}, h("button", { onclick: () => act("POST", `/api/admin/championships/${id}/start`) }, "▶ Empezar ya (admin): las plazas libres serán parejas de bots")));
+  parts.push(err);
+  mount(h("section", { class: "panel champ" }, parts));
+}
+
+function signUpBox(c, act) {
+  const url = `/api/championships/${c.id}`;
+  if (c.my_team_id) {
+    const team = c.team_list.find((t) => t.id === c.my_team_id);
+    return h("div", { class: "signup done" }, h("p", {}, "✔ Estás apuntado con la pareja ", h("b", {}, team.name), ". El cuadro se sortea al empezar."),
+      h("button", { class: "secondary", onclick: () => act("POST", `${url}/leave`) }, "Borrarme del campeonato"));
+  }
+  if (c.teams >= c.size) return h("p", { class: "muted" }, "El campeonato está completo.");
+  const name = h("input", { type: "text", maxlength: 30, placeholder: "Nombre de tu pareja" });
+  const opts = { partner: "bot", avatar: (state.avatars.find((a) => a.id !== state.me.avatar) || state.avatars[0]).id };
+  const picker = h("div", {}, partnerPicker(state.avatars.filter((a) => a.id !== state.me.avatar), opts.avatar, (a) => { opts.avatar = a; }));
+  const kind = segmented([["bot", "🤖 Con un bot de compañero"], ["persona", "👤 Busco compañero persona"]], "bot", (v) => { opts.partner = v; picker.hidden = v !== "bot"; });
+  return h("div", { class: "signup" }, h("h3", {}, "Apuntarse"), name, kind, picker,
+    h("p", { class: "muted" }, "Si buscas compañero persona y nadie se apunta antes de empezar, juegas con un bot."),
+    h("button", { class: "big go", onclick: () => act("POST", `${url}/teams`, { team_name: name.value, partner: opts.partner, bot_avatar: opts.avatar }) }, "Apuntar mi pareja"));
+}
+
+function teamsBox(c, act) {
+  const rows = c.team_list.map((t) => h("li", {}, h("b", {}, t.name), " — ",
+    t.players.length ? t.players.join(" y ") : "🤖 pareja de bots",
+    t.players.length === 1 && !t.partner_open ? " y 🤖 bot" : "",
+    t.partner_open && (c.status === "inscripcion" && !c.my_team_id
+      ? h("button", { class: "small", onclick: () => act("POST", `/api/championships/${c.id}/teams/${t.id}/join`) }, "Unirme como compañero")
+      : h("span", { class: "muted" }, " (busca compañero)"))));
+  return h("div", {}, h("h3", {}, `Parejas (${c.team_list.length}/${c.size})`), rows.length ? h("ul", { class: "teams" }, rows) : h("p", { class: "muted" }, "Aún no se ha apuntado nadie. ¡Sé la primera pareja!"));
+}
+
+function bracket(c, act) {
+  const cols = c.rounds.map((r) => h("div", { class: "round" }, h("h4", {}, r.name), r.matches.map((m) => matchBox(c, m, act))));
+  return h("div", { class: "scroll" }, h("div", { class: "bracket" }, cols));
+}
+
+function matchBox(c, m, act) {
+  const side = (t) => {
+    if (!t) return h("div", { class: "side tbd" }, "por decidir");
+    const won = m.winner_team_id === t.id;
+    return h("div", { class: `side${won ? " won" : m.winner_team_id ? " lost" : ""}${t.id === c.my_team_id ? " me" : ""}` },
+      h("span", {}, t.bot ? "🤖 " : "👤 ", t.name), m.score && h("b", {}, String(m.score[t === m.team_a ? 0 : 1])), won && m.walkover && h("small", {}, " (adm.)"));
+  };
+  const box = h("div", { class: `match${m.mine && m.ready ? " mine" : ""}` }, side(m.team_a), side(m.team_b));
+  if (m.mine && m.ready) {
+    box.append(h("button", { class: "small go", onclick: () => playMatch(c, m) }, m.room ? "▶ Volver a mi partido" : "▶ Jugar mi partido"));
+  } else if (m.ready && m.room) {
+    box.append(h("small", { class: "muted" }, "Jugándose ahora"));
+  }
+  if (state.me.admin && m.ready) {
+    box.append(h("div", { class: "adminwin" }, h("small", {}, "Dar ganador (admin): "),
+      [m.team_a, m.team_b].map((t) => h("button", { class: "small secondary", onclick: () => { if (confirm(`¿Dar el partido a ${t.name}?`)) act("POST", `/api/admin/championships/${c.id}/matches/${m.id}/winner`, { team_id: t.id }); } }, t.name))));
+  }
+  return box;
+}
+
+async function playMatch(c, m) {
+  unlockVoice();
+  try {
+    const room = await api("POST", `/api/championships/${c.id}/matches/${m.id}/play`);
+    // Si en el partido sólo juegas tú (contra bots), empieza ya; si no, se espera a la otra pareja.
+    if (room.human_seats.length === 1 && !room.started) await api("POST", `/api/rooms/${room.code}/start`);
+    enterRoom(room);
+  } catch (e) { alert(e.message); }
+}
+
+async function adminChampionships() {
+  const list = await api("GET", "/api/championships");
+  const name = h("input", { type: "text", maxlength: 60, placeholder: "p. ej. Campeonato de Navidad" });
+  const date = h("input", { type: "datetime-local" });
+  const tomorrow = new Date(Date.now() + 86400000);
+  tomorrow.setMinutes(0, 0, 0);
+  date.value = new Date(tomorrow.getTime() - tomorrow.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+  const opts = { size: 8, target: 40 };
+  const size = segmented([[8, "8 parejas"], [16, "16 parejas"], [32, "32 parejas"]], 8, (v) => { opts.size = v; });
+  const target = segmented([[40, "A 40"], [30, "A 30"]], 40, (v) => { opts.target = v; });
+  const signals = h("input", { type: "checkbox" });
+  const msg = h("p", { class: "error" });
+  const create = async () => {
+    if (!date.value) { msg.textContent = "Pon la fecha de comienzo."; return; }
+    try {
+      await api("POST", "/api/admin/championships", { name: name.value, starts_at: new Date(date.value).toISOString(), size: opts.size, target: opts.target, signals: signals.checked });
+      adminScreen("campeonatos");
+    } catch (e) { msg.textContent = e.message; }
+  };
+  const rows = list.map((c) => h("tr", {}, h("td", {}, c.name), h("td", {}, when(c.starts_at)), h("td", {}, `${c.teams}/${c.size}`), h("td", {}, CHAMP_STATUS[c.status]),
+    h("td", { class: "actions" },
+      h("button", { class: "secondary", onclick: () => championshipScreen(c.id) }, "Ver"),
+      c.status === "inscripcion" && h("button", { class: "secondary", onclick: async () => { try { await api("POST", `/api/admin/championships/${c.id}/start`); adminScreen("campeonatos"); } catch (e) { alert(e.message); } } }, "Empezar ya"),
+      h("button", { class: "danger", onclick: async () => { if (!confirm(`¿Borrar el campeonato «${c.name}»?`)) return; await api("DELETE", `/api/admin/championships/${c.id}`); adminScreen("campeonatos"); } }, "Borrar"))));
+  return h("div", { class: "grid2" },
+    h("div", {}, h("h3", {}, "Nuevo campeonato"),
+      h("label", {}, "Nombre"), name,
+      h("label", {}, "Fecha y hora de comienzo"), date,
+      h("label", {}, "Parejas (mínimo 8: cuartos, semifinales y final)"), size,
+      h("label", {}, "Partidas a"), target,
+      h("label", { class: "check" }, signals, "Con señas"),
+      h("button", { onclick: create }, "Crear campeonato"), msg,
+      h("p", { class: "muted" }, "La gente se apunta desde el lobby hasta la fecha de comienzo. Entonces se sortea el cuadro y las plazas libres se llenan con parejas de bots. Los partidos entre bots se juegan solos; en los demás juegan las personas de cada pareja cuando quieran. Si una pareja no se presenta, puedes dar el partido a la otra desde el cuadro.")),
+    h("div", {}, h("h3", {}, "Campeonatos"),
+      rows.length ? h("div", { class: "scroll" }, h("table", { class: "list" }, h("thead", {}, h("tr", {}, ["Nombre", "Empieza", "Parejas", "Estado", ""].map((t) => h("th", {}, t)))), h("tbody", {}, rows)))
+        : h("p", { class: "muted" }, "Todavía no hay campeonatos.")));
 }
 
 async function exportData() {
@@ -697,13 +905,15 @@ function render() {
 function waitingRoom() {
   const room = state.room;
   const err = h("p", { class: "error" });
-  const isHost = room.host_id === state.me.id;
+  const isHost = room.host_id === state.me.id || room.mode === "campeonato";
   const missing = room.human_seats.filter((s) => !room.seats[s]).length;
   mount(h("section", { class: "panel" },
     h("h2", {}, "Sala ", h("span", { class: "code" }, room.code)),
     linkStatus(),
     h("p", {}, MODES[room.mode], " · ", room.signals ? "con señas" : "sin señas", room.mode !== "cuatro" ? ` · bots de nivel ${room.level}` : ""),
-    room.mode !== "con_bot" && h("p", { class: "muted" }, "Pasa este código a tus amigos para que se unan."),
+    room.team_names && h("p", {}, h("b", {}, room.team_names[0]), " (pareja A) contra ", h("b", {}, room.team_names[1]), " (pareja B)"),
+    room.mode === "campeonato" ? h("p", { class: "muted" }, "Partido de campeonato: la otra pareja entra desde el cuadro con «Jugar mi partido».")
+      : room.mode !== "con_bot" && h("p", { class: "muted" }, "Pasa este código a tus amigos para que se unan."),
     h("ul", {}, [0, 1, 2, 3].map((s) => h("li", {}, `Asiento ${s + 1} (pareja ${s % 2 ? "B" : "A"}): `,
       room.seats[s] ? `${room.seats[s].name} — ${room.seats[s].avatar.nickname}` : room.human_seats.includes(s) ? "esperando jugador…" : "bot"))),
     isHost
@@ -722,12 +932,12 @@ function waitingRoom() {
 function cardEl(code, opts = {}) {
   const mini = Boolean(opts.small);
   let art;
-  if (!code) art = MusCards.back({ mini });
+  if (!code) art = adBack(mini);
   else if (state.deckImages.includes(code)) art = h("img", { src: `/static/cards/${code}.png`, alt: "" });
   else art = MusCards.svg(code, { mini });
   const num = code ? Number(code.slice(0, -1)) : 0;
   const title = code ? `${FIGURES[num] || num} de ${SUITS[code.slice(-1)]}` : "carta boca abajo";
-  const cls = `card${mini ? " mini" : ""}${opts.selected ? " sel" : ""}${opts.glow ? " glow" : ""}${opts.fly ? " fly" : ""}`;
+  const cls = `card${mini ? " mini" : ""}${opts.bot ? " bot" : ""}${opts.selected ? " sel" : ""}${opts.glow ? " glow" : ""}${opts.fly ? " fly" : ""}`;
   const node = h(opts.onclick ? "button" : "span", { class: cls, onclick: opts.onclick, title, "aria-label": title }, art);
   if (opts.fly) { node.style.setProperty("--fx", `${opts.fly[0]}px`); node.style.setProperty("--fy", `${opts.fly[1]}px`); }
   return node;
@@ -1172,14 +1382,17 @@ function scoreStones(tantos, label) {
   return box;
 }
 
+// Marcador compacto, en la parte de arriba del tapete: tantos, piedras y lo que falta.
 function scoreBox(g, ours) {
   const team = ours ? g.seat % 2 : 1 - (g.seat % 2);
   const tantos = g.score.tantos[team];
+  const pile = stonePile(tantos);
+  pile.title = `${tantos} tantos = ${Math.floor(tantos / 5)} amarracos y ${tantos % 5} piedras`;
   return h("div", { class: `teambox ${ours ? "ours" : "theirs"}` },
-    h("div", { class: "tb-head" }, h("span", { class: "dot" }), h("span", { class: "tname" }, ours ? "Tu pareja" : "Rivales"),
-      h("span", { class: "big" }, String(tantos), h("small", {}, `/${g.target_score}`))),
-    scoreStones(tantos),
-    h("div", { class: "faltan" }, tantos >= g.target_score ? "¡Juego!" : `Faltan ${g.target_score - tantos}`));
+    h("span", { class: "dot" }), h("span", { class: "tname" }, ours ? "Tu pareja" : "Rivales"),
+    h("span", { class: "big" }, String(tantos), h("small", {}, `/${g.target_score}`)),
+    pile,
+    h("span", { class: "faltan" }, tantos >= g.target_score ? "¡Juego!" : `Faltan ${g.target_score - tantos}`));
 }
 
 function tableScreen() {
@@ -1219,19 +1432,19 @@ function tableScreen() {
         onclick: !dealing && g.phase === "discard" && g.to_act.includes(me) ? () => { state.selected.has(c) ? state.selected.delete(c) : state.selected.add(c); render(); } : null,
       }));
     } else if (revealed && revealed[s] && revealed[s].length) {
-      cards = revealed[s].map((c) => cardEl(c, { small: true }));
+      cards = revealed[s].map((c) => cardEl(c, { bot: true }));
     } else {
-      cards = Array.from({ length: count }, (_, k) => cardEl(null, { small: true, fly: fromDealer(k) }));
+      cards = Array.from({ length: count }, (_, k) => cardEl(null, { bot: true, fly: fromDealer(k) }));
     }
     const deck = s === g.dealer && g.phase !== "game_over" && h("div", { class: "deck", title: "Baraja" },
-      h("span", { class: "card mini" }, MusCards.back({ mini: true })), h("small", {}, "Baraja"));
+      h("span", { class: "card mini" }, adBack(true)), h("small", {}, "Baraja"));
     return h("div", { class: `seat pos${pos}${!dealing && g.to_act.includes(s) ? " turn" : ""}${s % 2 === me % 2 ? " ours" : " theirs"}` },
       state.bubbles[s] && h("div", { class: "bubble" }, state.bubbles[s]),
       h("div", { class: "plate" },
         face(occ.avatar, dx, dy, moodFor(g, s)),
         h("div", {}, h("div", { class: "name" }, occ.name, occ.bot ? " 🤖" : ""), h("div", { class: "tags" }, tags.join(" · ")))),
       chips.length > 0 && h("div", { class: "chips" }, chips),
-      h("div", { class: `hand-row${deck ? " with-deck" : ""}` }, deck, h("div", { class: `cards${s === me ? " mine" : ""}${s !== me && revealed && revealed[s] && revealed[s].length ? " shown" : ""}` }, cards)),
+      h("div", { class: `hand-row${deck ? " with-deck" : ""}` }, deck, h("div", { class: `cards${s === me ? " mine" : ""}${s !== me && revealed && revealed[s] && revealed[s].length ? " shown" : ""}` }, cards), adDrink()),
       s === me && !dealing && myHandChips(g.my_hand));
   });
   const mineTeam = me % 2;
@@ -1239,7 +1452,9 @@ function tableScreen() {
     room.awaiting_deal && !state.dealing ? (summaryWaiting(g, room) || (!handSummary(g, room) && dealPanel(g)) || lanceBoard(g)) : lanceBoard(g),
     g.signals_seen.length > 0 && h("div", { class: "signals-seen" }, "🤫 Seña vista: " + g.signals_seen.map((x) => `${g.names[x.sender]} → ${SIGNALS[x.signal]} (${SIGNAL_HELP[x.signal] || ""})`).join(", ")),
     g.winner && h("h2", {}, g.winner === (mineTeam ? "B" : "A") ? "🏆 ¡Habéis ganado!" : "Habéis perdido"),
-    g.winner && (room.tournament_round
+    g.winner && (room.championship_id
+      ? h("button", { class: "big go", onclick: () => championshipScreen(room.championship_id) }, "🏆 Ver el campeonato")
+      : room.tournament_round
       ? h("button", { class: "big go", onclick: () => { finishTorneoGame(g, room); tournamentScreen(); } }, "🏆 Ver el torneo")
       : h("button", { class: "big go", onclick: () => { document.body.classList.remove("playing"); lobby(); } }, "Volver al menú")));
   const lines = g.events.map((e) => describe(e, g.names, me)).filter(Boolean).slice(-40);
@@ -1250,12 +1465,12 @@ function tableScreen() {
     h("div", { class: "lancepill" }, h("small", {}, "LANCE"), " ", dealing ? "REPARTO" : phaseLabel(g).toUpperCase()),
     scoreBox(g, false));
   mount(
-    header,
     !dealing && turnBanner(g),
     state.notice && Date.now() < state.notice.until && h("div", { class: "banner notice" }, `🤝 ${state.notice.text}`),
     linkStatus(),
-    h("div", { class: "felt" }, h("div", { class: "table" }, seats, center)),
-    !dealing && actionBar(g),
+    h("div", { class: "playarea" },
+      h("div", { class: "felt" }, h("div", { class: "table" }, header, seats, center)),
+      !dealing && actionBar(g)),
     h("p", { class: "error", id: "table-error" }),
     h("details", { class: "panel history" }, h("summary", {}, "📜 Lo que ha pasado"), log,
       h("label", { class: "check" }, h("input", { type: "checkbox", checked: state.quiet, onchange: (ev) => { state.quiet = ev.target.checked; } }), "Silenciar frases")),
@@ -1270,6 +1485,7 @@ function tableScreen() {
     const pack = await api("GET", "/api/avatars");
     state.avatars = pack.avatars; state.notice = pack.aviso;
     state.deckImages = (await api("GET", "/api/deck")).images;
+    state.ads = await api("GET", "/api/ads");
     document.getElementById("notice").textContent = pack.aviso;
   } catch (e) { /* sin avatares no se puede seguir */ }
   try { state.me = await api("GET", "/api/me"); lobby(); }
